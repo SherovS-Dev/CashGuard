@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/bank_card.dart';
+import '../models/cash_location.dart';
+import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import '../services/backup_service.dart';
 import 'home_screen.dart';
@@ -21,12 +24,11 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
   final List<BankCardInput> _bankCards = [];
   final List<CashLocationInput> _cashLocations = [];
+  final List<MobileWalletInput> _mobileWallets = [];
 
   bool _isLoading = true;
   bool _isEditMode = false;
   bool _isRestoring = false;
-  User? _existingUser;
-
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
 
@@ -52,10 +54,27 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
     if (user != null) {
       setState(() {
-        _existingUser = user;
         _isEditMode = true;
         _nameController.text = user.name;
-        _cashInHandController.text = user.cashInHand.toString();
+
+        // Загружаем основные наличные из cashLocations
+        if (user.cashLocations.isNotEmpty) {
+          final mainCash = user.cashLocations.firstWhere(
+                (loc) => loc.name == 'Наличные в руке',
+            orElse: () => user.cashLocations.first,
+          );
+          _cashInHandController.text = mainCash.amount.toString();
+
+          // Загружаем остальные места
+          for (var location in user.cashLocations) {
+            if (location.name != 'Наличные в руке') {
+              final locInput = CashLocationInput();
+              locInput.nameController.text = location.name;
+              locInput.amountController.text = location.amount.toString();
+              _cashLocations.add(locInput);
+            }
+          }
+        }
 
         // Загружаем банковские карты
         for (var card in user.bankCards) {
@@ -65,6 +84,15 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           cardInput.balanceController.text = card.balance.toString();
           cardInput.bankController.text = card.bankName ?? '';
           _bankCards.add(cardInput);
+        }
+
+        // Загружаем мобильные кошельки
+        for (var wallet in user.mobileWallets) {
+          final walletInput = MobileWalletInput();
+          walletInput.nameController.text = wallet.name;
+          walletInput.phoneController.text = wallet.phoneNumber;
+          walletInput.balanceController.text = wallet.balance.toString();
+          _mobileWallets.add(walletInput);
         }
       });
     }
@@ -112,6 +140,19 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     setState(() {
       _cashLocations[index].dispose();
       _cashLocations.removeAt(index);
+    });
+  }
+
+  void _addMobileWallet() {
+    setState(() {
+      _mobileWallets.add(MobileWalletInput());
+    });
+  }
+
+  void _removeMobileWallet(int index) {
+    setState(() {
+      _mobileWallets[index].dispose();
+      _mobileWallets.removeAt(index);
     });
   }
 
@@ -219,37 +260,62 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     }
   }
 
-  // ИСПРАВЛЕНО: Теперь сохраняем только основные наличные из первого поля
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Берем ТОЛЬКО основные наличные из первого поля (деньги в руке)
-    double mainCash = double.tryParse(_cashInHandController.text) ?? 0;
+    // Собираем все места хранения наличных
+    final List<CashLocation> cashLocations = [];
 
-    // ПРИМЕЧАНИЕ: Дополнительные места хранения наличных (_cashLocations)
-    // временно не используются в модели User. В будущем можно добавить
-    // отдельное поле для хранения этой информации.
+    // Добавляем основные наличные
+    final mainCash = double.tryParse(_cashInHandController.text) ?? 0;
+    cashLocations.add(CashLocation(
+      id: 'main_cash',
+      name: 'Наличные в руке',
+      amount: mainCash,
+    ));
+
+    // Добавляем дополнительные места
+    for (var i = 0; i < _cashLocations.length; i++) {
+      final location = _cashLocations[i];
+      cashLocations.add(CashLocation(
+        id: 'cash_location_$i',
+        name: location.nameController.text.trim(),
+        amount: double.tryParse(location.amountController.text) ?? 0,
+      ));
+    }
+
+    // Собираем банковские карты
+    final bankCards = _bankCards.map((input) {
+      return BankCard(
+        cardName: input.nameController.text.trim(),
+        cardNumber: input.numberController.text.trim(),
+        balance: double.tryParse(input.balanceController.text) ?? 0,
+        bankName: input.bankController.text.trim().isEmpty
+            ? null
+            : input.bankController.text.trim(),
+      );
+    }).toList();
+
+    // Собираем мобильные кошельки
+    final mobileWallets = _mobileWallets.map((input) {
+      return MobileWallet(
+        name: input.nameController.text.trim(),
+        phoneNumber: input.phoneController.text.trim(),
+        balance: double.tryParse(input.balanceController.text) ?? 0,
+      );
+    }).toList();
 
     final user = User(
       name: _nameController.text.trim(),
-      cashInHand: mainCash, // ИСПРАВЛЕНО: только основные наличные
-      bankCards: _bankCards.map((input) {
-        return BankCard(
-          cardName: input.nameController.text.trim(),
-          cardNumber: input.numberController.text.trim(),
-          balance: double.tryParse(input.balanceController.text) ?? 0,
-          bankName: input.bankController.text.trim().isEmpty
-              ? null
-              : input.bankController.text.trim(),
-        );
-      }).toList(),
+      cashLocations: cashLocations,
+      bankCards: bankCards,
+      mobileWallets: mobileWallets,
     );
 
     await _storageService.saveUserData(user);
 
-    // Если это первая настройка (не редактирование), сохраняем начальный баланс
     if (!_isEditMode) {
       await _storageService.saveInitialBalance(user.totalBalance);
     }
@@ -1216,6 +1282,18 @@ class BankCardInput {
     numberController.dispose();
     balanceController.dispose();
     bankController.dispose();
+  }
+}
+
+class MobileWalletInput {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController balanceController = TextEditingController();
+
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    balanceController.dispose();
   }
 }
 

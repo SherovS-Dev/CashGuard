@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/bank_card.dart';
+import '../models/cash_location.dart';
+import '../models/mobile_wallet.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
 import '../services/secure_storage_service.dart';
@@ -162,11 +165,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
       case LocationType.mobileWallet:
         final updatedWallets = user.mobileWallets.map((wallet) {
-          if (wallet.id == location.id) {
+          if (wallet.name == location.name) {
             return MobileWallet(
-              id: wallet.id,
               name: wallet.name,
-              bankName: wallet.bankName,
+              phoneNumber: wallet.phoneNumber,
               balance: wallet.balance + amountChange,
             );
           }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/bank_card.dart';
 import '../models/debt.dart';
+import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import 'debts_screen.dart';
 import 'lock_screen.dart';
@@ -660,14 +662,6 @@ class _CompactMobileWalletCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  wallet.bankName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
                   ),
                 ),
               ],
