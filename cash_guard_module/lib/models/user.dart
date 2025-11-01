@@ -1,3 +1,5 @@
+import 'debt.dart';
+
 class User {
   final String name;
   final double cashInHand;
@@ -31,6 +33,26 @@ class User {
           .toList() ??
           [],
     );
+  }
+
+  // Общая сумма долгов (что мне должны)
+  double getTotalBorrowedDebts(List<Debt> debts) {
+    return debts
+        .where((d) => d.type == DebtType.borrowed && d.status != DebtStatus.fullyPaid)
+        .fold(0, (sum, debt) => sum + debt.remainingWithInterest);
+  }
+
+  // Общая сумма долгов (что я должен)
+  double getTotalLentDebts(List<Debt> debts) {
+    return debts
+        .where((d) => (d.type == DebtType.lent || d.type == DebtType.credit) &&
+        d.status != DebtStatus.fullyPaid)
+        .fold(0, (sum, debt) => sum + debt.remainingWithInterest);
+  }
+
+  // Чистый баланс с учетом долгов
+  double getNetBalance(List<Debt> debts) {
+    return totalBalance + getTotalBorrowedDebts(debts) - getTotalLentDebts(debts);
   }
 }
 

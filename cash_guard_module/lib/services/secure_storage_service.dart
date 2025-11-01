@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
+import '../models/debt.dart';
 import '../models/user.dart' show User;
 import '../models/transaction.dart';
 
@@ -102,6 +103,42 @@ class SecureStorageService {
       key: 'initial_balance',
       value: balance.toString(),
     );
+  }
+
+  // Работа с долгами
+  Future<void> saveDebts(List<Debt> debts) async {
+    final jsonString = jsonEncode(
+      debts.map((d) => d.toJson()).toList(),
+    );
+    await _secureStorage.write(key: 'debts', value: jsonString);
+  }
+
+  Future<List<Debt>> getDebts() async {
+    final jsonString = await _secureStorage.read(key: 'debts');
+    if (jsonString == null) return [];
+    final List<dynamic> jsonList = jsonDecode(jsonString);
+    return jsonList.map((json) => Debt.fromJson(json)).toList();
+  }
+
+  Future<void> addDebt(Debt debt) async {
+    final debts = await getDebts();
+    debts.add(debt);
+    await saveDebts(debts);
+  }
+
+  Future<void> updateDebt(Debt debt) async {
+    final debts = await getDebts();
+    final index = debts.indexWhere((d) => d.id == debt.id);
+    if (index != -1) {
+      debts[index] = debt;
+      await saveDebts(debts);
+    }
+  }
+
+  Future<void> deleteDebt(String id) async {
+    final debts = await getDebts();
+    debts.removeWhere((d) => d.id == id);
+    await saveDebts(debts);
   }
 
   Future<double> getInitialBalance() async {

@@ -19,6 +19,11 @@ dependencies:
   # Криптография для хеширования паролей
   crypto: ^3.0.3
 
+  # Новые зависимости для backup:
+  path_provider: ^2.1.1
+  share_plus: ^7.2.1
+  file_picker: ^6.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

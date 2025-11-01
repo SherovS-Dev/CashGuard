@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/debt.dart';
 import '../services/secure_storage_service.dart';
+import 'backup_screen.dart';
+import 'debts_screen.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
 import 'add_transaction_screen.dart';
@@ -17,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final _storageService = SecureStorageService();
   User? _user;
   bool _isLoading = true;
+  List<Debt> _debts = [];
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -40,8 +44,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  void _openBackup() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const BackupScreen(),
+      ),
+    );
+  }
+
   Future<void> _loadUserData() async {
     final user = await _storageService.getUserData();
+    final debts = await _storageService.getDebts(); // ДОБАВИТЬ
 
     // Сохраняем начальный баланс, если его еще нет
     final initialBalance = await _storageService.getInitialBalance();
@@ -51,9 +64,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     setState(() {
       _user = user;
+      _debts = debts; // ДОБАВИТЬ
       _isLoading = false;
     });
     _animationController.forward();
+  }
+
+  void _openDebts() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DebtsScreen(),
+      ),
+    ).then((_) => _loadUserData()); // Обновляем данные при возврате
   }
 
   Future<void> _resetPassword() async {
@@ -274,6 +296,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.backup_rounded),
+                  tooltip: 'Backup',
+                  onPressed: _openBackup,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.account_balance_rounded),
+                  tooltip: 'Долги и кредиты',
+                  onPressed: _openDebts,
+                ),
+                IconButton(
                   icon: const Icon(Icons.history_rounded),
                   tooltip: 'Транзакции',
                   onPressed: _openTransactions,
@@ -363,6 +395,135 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ],
                         ),
                       ),
+
+                      const SizedBox(height: 32),
+
+                      // Debts Summary Card
+                      if (_debts.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        GestureDetector(
+                          onTap: _openDebts,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.orange.shade400,
+                                  Colors.orange.shade600,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.shade200.withOpacity(0.6),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.account_balance_rounded,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Долги и кредиты',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.9),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      color: Colors.white.withOpacity(0.7),
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Мне должны',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.8),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatCurrency(_user!.getTotalBorrowedDebts(_debts)),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 40,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Я должен',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.8),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatCurrency(_user!.getTotalLentDebts(_debts)),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 32),
 
