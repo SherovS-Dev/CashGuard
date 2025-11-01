@@ -7,12 +7,13 @@ enum TransactionType {
 enum LocationType {
   cash,
   card,
+  mobileWallet, // Мобильный кошелек банка
 }
 
 class TransactionLocation {
   final LocationType type;
-  final String name; // Название (например: "Наличные в кошельке", "Сбербанк *1234")
-  final String? id; // ID для карты (последние 4 цифры) или уникальный ID для наличных
+  final String name; // Название (например: "Наличные в кошельке", "Сбербанк *1234", "Сбер Pay")
+  final String? id; // ID для карты (последние 4 цифры) или уникальный ID для наличных/кошельков
 
   TransactionLocation({
     required this.type,
@@ -29,10 +30,21 @@ class TransactionLocation {
   }
 
   factory TransactionLocation.fromJson(Map<String, dynamic> json) {
+    LocationType type;
+    final typeString = json['type'] as String;
+
+    if (typeString == 'LocationType.cash') {
+      type = LocationType.cash;
+    } else if (typeString == 'LocationType.card') {
+      type = LocationType.card;
+    } else if (typeString == 'LocationType.mobileWallet') {
+      type = LocationType.mobileWallet;
+    } else {
+      type = LocationType.cash; // fallback
+    }
+
     return TransactionLocation(
-      type: json['type'] == 'LocationType.cash'
-          ? LocationType.cash
-          : LocationType.card,
+      type: type,
       name: json['name'] ?? '',
       id: json['id'],
     );
@@ -45,7 +57,6 @@ class Transaction {
   final double amount;
   final TransactionType type;
   final DateTime date;
-  final String? category;
   final TransactionLocation location; // Источник для расходов/переводов, назначение для доходов
   final TransactionLocation? transferTo; // Куда переводим (только для переводов)
 
@@ -55,7 +66,6 @@ class Transaction {
     required this.amount,
     required this.type,
     required this.date,
-    this.category,
     required this.location,
     this.transferTo,
   });
@@ -67,7 +77,6 @@ class Transaction {
       'amount': amount,
       'type': type.toString(),
       'date': date.toIso8601String(),
-      'category': category,
       'location': location.toJson(),
       'transferTo': transferTo?.toJson(),
     };
@@ -84,7 +93,6 @@ class Transaction {
           ? TransactionType.transfer
           : TransactionType.expense,
       date: DateTime.parse(json['date']),
-      category: json['category'],
       location: TransactionLocation.fromJson(json['location']),
       transferTo: json['transferTo'] != null
           ? TransactionLocation.fromJson(json['transferTo'])

@@ -93,105 +93,92 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       // Возвращаем баланс обратно
       final user = await _storageService.getUserData();
       if (user != null) {
+        User updatedUser = user;
+
         if (transaction.type == TransactionType.transfer) {
           // Отменяем перевод
-          User updatedUser = user;
-
           // Возвращаем деньги на источник
-          if (transaction.location.type == LocationType.cash) {
-            updatedUser = User(
-              name: updatedUser.name,
-              cashInHand: updatedUser.cashInHand + transaction.amount,
-              bankCards: updatedUser.bankCards,
-            );
-          } else {
-            final updatedCards = updatedUser.bankCards.map((card) {
-              if (card.cardNumber == transaction.location.id) {
-                return BankCard(
-                  cardName: card.cardName,
-                  cardNumber: card.cardNumber,
-                  balance: card.balance + transaction.amount,
-                  bankName: card.bankName,
-                );
-              }
-              return card;
-            }).toList();
-            updatedUser = User(
-              name: updatedUser.name,
-              cashInHand: updatedUser.cashInHand,
-              bankCards: updatedCards,
-            );
-          }
+          updatedUser = _updateBalance(updatedUser, transaction.location, transaction.amount);
 
           // Снимаем с получателя
-          if (transaction.transferTo!.type == LocationType.cash) {
-            updatedUser = User(
-              name: updatedUser.name,
-              cashInHand: updatedUser.cashInHand - transaction.amount,
-              bankCards: updatedUser.bankCards,
-            );
-          } else {
-            final updatedCards = updatedUser.bankCards.map((card) {
-              if (card.cardNumber == transaction.transferTo!.id) {
-                return BankCard(
-                  cardName: card.cardName,
-                  cardNumber: card.cardNumber,
-                  balance: card.balance - transaction.amount,
-                  bankName: card.bankName,
-                );
-              }
-              return card;
-            }).toList();
-            updatedUser = User(
-              name: updatedUser.name,
-              cashInHand: updatedUser.cashInHand,
-              bankCards: updatedCards,
-            );
-          }
-
-          await _storageService.saveUserData(updatedUser);
+          updatedUser = _updateBalance(updatedUser, transaction.transferTo!, -transaction.amount);
         } else {
           // Отменяем доход или расход
-          if (transaction.location.type == LocationType.cash) {
-            final newCashInHand = transaction.type == TransactionType.income
-                ? user.cashInHand - transaction.amount
-                : user.cashInHand + transaction.amount;
+          final amountChange = transaction.type == TransactionType.income
+              ? -transaction.amount  // Если был доход, вычитаем
+              : transaction.amount;   // Если был расход, возвращаем
 
-            final updatedUser = User(
-              name: user.name,
-              cashInHand: newCashInHand,
-              bankCards: user.bankCards,
-            );
-            await _storageService.saveUserData(updatedUser);
-          } else {
-            final updatedCards = user.bankCards.map((card) {
-              if (card.cardNumber == transaction.location.id) {
-                final newBalance = transaction.type == TransactionType.income
-                    ? card.balance - transaction.amount
-                    : card.balance + transaction.amount;
-
-                return BankCard(
-                  cardName: card.cardName,
-                  cardNumber: card.cardNumber,
-                  balance: newBalance,
-                  bankName: card.bankName,
-                );
-              }
-              return card;
-            }).toList();
-
-            final updatedUser = User(
-              name: user.name,
-              cashInHand: user.cashInHand,
-              bankCards: updatedCards,
-            );
-            await _storageService.saveUserData(updatedUser);
-          }
+          updatedUser = _updateBalance(updatedUser, transaction.location, amountChange);
         }
+
+        await _storageService.saveUserData(updatedUser);
       }
 
       await _storageService.deleteTransaction(transaction.id);
       _loadData();
+    }
+  }
+
+  User _updateBalance(User user, TransactionLocation location, double amountChange) {
+    switch (location.type) {
+      case LocationType.cash:
+        final updatedCashLocations = user.cashLocations.map((loc) {
+          if (loc.id == location.id) {
+            return CashLocation(
+              id: loc.id,
+              name: loc.name,
+              amount: loc.amount + amountChange,
+            );
+          }
+          return loc;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: updatedCashLocations,
+          bankCards: user.bankCards,
+          mobileWallets: user.mobileWallets,
+        );
+
+      case LocationType.card:
+        final updatedCards = user.bankCards.map((card) {
+          if (card.cardNumber == location.id) {
+            return BankCard(
+              cardName: card.cardName,
+              cardNumber: card.cardNumber,
+              balance: card.balance + amountChange,
+              bankName: card.bankName,
+            );
+          }
+          return card;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: user.cashLocations,
+          bankCards: updatedCards,
+          mobileWallets: user.mobileWallets,
+        );
+
+      case LocationType.mobileWallet:
+        final updatedWallets = user.mobileWallets.map((wallet) {
+          if (wallet.id == location.id) {
+            return MobileWallet(
+              id: wallet.id,
+              name: wallet.name,
+              bankName: wallet.bankName,
+              balance: wallet.balance + amountChange,
+            );
+          }
+          return wallet;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: user.cashLocations,
+          bankCards: user.bankCards,
+          mobileWallets: updatedWallets,
+        );
     }
   }
 
@@ -445,6 +432,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         child: Dismissible(
                           key: Key(transaction.id),
                           direction: DismissDirection.endToStart,
+                          confirmDismiss: (_) async {
+                            await _deleteTransaction(transaction);
+                            return false; // Не удаляем через Dismissible, делаем вручную
+                          },
                           background: Container(
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),
@@ -458,7 +449,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               size: 28,
                             ),
                           ),
-                          onDismissed: (_) => _deleteTransaction(transaction),
                           child: _TransactionCard(transaction: transaction),
                         ),
                       );
@@ -605,35 +595,14 @@ class _TransactionCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (transaction.category != null) ...[
-                          Flexible(
-                            child: Text(
-                              transaction.category!,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            ' • ',
-                            style: TextStyle(color: Colors.grey.shade400),
-                          ),
-                        ],
-                        Flexible(
-                          child: Text(
-                            _formatDateTime(transaction.date),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    // УБРАЛИ КАТЕГОРИЮ - теперь только дата
+                    Text(
+                      _formatDateTime(transaction.date),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -672,9 +641,7 @@ class _TransactionCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              transaction.location.type == LocationType.cash
-                                  ? Icons.payments_rounded
-                                  : Icons.credit_card_rounded,
+                              _getLocationIcon(transaction.location.type),
                               size: 16,
                               color: Colors.grey.shade600,
                             ),
@@ -721,9 +688,7 @@ class _TransactionCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              transaction.transferTo!.type == LocationType.cash
-                                  ? Icons.payments_rounded
-                                  : Icons.credit_card_rounded,
+                              _getLocationIcon(transaction.transferTo!.type),
                               size: 16,
                               color: Colors.blue.shade700,
                             ),
@@ -762,9 +727,7 @@ class _TransactionCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    transaction.location.type == LocationType.cash
-                        ? Icons.payments_rounded
-                        : Icons.credit_card_rounded,
+                    _getLocationIcon(transaction.location.type),
                     size: 16,
                     color: Colors.grey.shade600,
                   ),
@@ -783,5 +746,16 @@ class _TransactionCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData _getLocationIcon(LocationType type) {
+    switch (type) {
+      case LocationType.cash:
+        return Icons.payments_rounded;
+      case LocationType.card:
+        return Icons.credit_card_rounded;
+      case LocationType.mobileWallet:
+        return Icons.phone_android_rounded;
+    }
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/debt.dart';
 import '../services/secure_storage_service.dart';
-import 'backup_screen.dart';
 import 'debts_screen.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
@@ -425,13 +424,55 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 12),
 
-              // Наличные - компактная карточка
-              _CompactBalanceCard(
-                title: 'Наличные',
-                amount: _user!.cashInHand,
-                icon: Icons.payments_rounded,
-                color: Colors.green,
-              ),
+              // Отображаем каждое место хранения наличных отдельно
+              if (_user!.cashLocations.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Наличные',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...List.generate(
+                  _user!.cashLocations.length,
+                      (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _CompactBalanceCard(
+                      title: _user!.cashLocations[index].name,
+                      amount: _user!.cashLocations[index].amount,
+                      icon: Icons.payments_rounded,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+
+              // Добавляем отображение мобильных кошельков
+              if (_user!.mobileWallets.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Мобильные кошельки',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...List.generate(
+                  _user!.mobileWallets.length,
+                      (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _CompactMobileWalletCard(
+                      wallet: _user!.mobileWallets[index],
+                      index: index,
+                    ),
+                  ),
+                ),
+              ],
 
               if (_user!.bankCards.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -559,6 +600,88 @@ class _QuickActionButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompactMobileWalletCard extends StatelessWidget {
+  final MobileWallet wallet;
+  final int index;
+
+  const _CompactMobileWalletCard({required this.wallet, required this.index});
+
+  String _formatCurrency(double amount) {
+    return '${amount.toStringAsFixed(2)} ₽';
+  }
+
+  Color _getWalletColor(int index) {
+    final colors = [
+      Colors.purple,
+      Colors.indigo,
+      Colors.cyan,
+      Colors.amber,
+    ];
+    return colors[index % colors.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _getWalletColor(index);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.phone_android_rounded,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  wallet.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  wallet.bankName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            _formatCurrency(wallet.balance),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ],
       ),
     );
   }
