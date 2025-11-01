@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/secure_storage_service.dart';
+import '../services/backup_service.dart';
 import 'home_screen.dart';
 import '../models/user.dart';
 
@@ -16,12 +17,14 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   final _nameController = TextEditingController();
   final _cashInHandController = TextEditingController();
   final _storageService = SecureStorageService();
+  final _backupService = BackupService();
 
   final List<BankCardInput> _bankCards = [];
   final List<CashLocationInput> _cashLocations = [];
 
   bool _isLoading = true;
   bool _isEditMode = false;
+  bool _isRestoring = false;
   User? _existingUser;
 
   late AnimationController _animationController;
@@ -112,6 +115,110 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     });
   }
 
+  Future<void> _restoreFromBackup() async {
+    setState(() {
+      _isRestoring = true;
+    });
+
+    try {
+      final result = await _backupService.pickAndRestoreBackup();
+
+      if (!mounted) return;
+
+      if (result == null) {
+        throw Exception('Не удалось прочитать файл');
+      }
+
+      if (result['success'] == true) {
+        // Показываем результаты восстановления
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green.shade700),
+                const SizedBox(width: 12),
+                const Text('Успешно!'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Данные успешно восстановлены:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _RestoreInfoRow(
+                  icon: Icons.person,
+                  label: 'Профиль',
+                  value: result['userRestored'] ? 'Восстановлен' : 'Не найден',
+                  isSuccess: result['userRestored'],
+                ),
+                _RestoreInfoRow(
+                  icon: Icons.receipt,
+                  label: 'Транзакции',
+                  value: '${result['transactionsCount']} шт.',
+                  isSuccess: result['transactionsCount'] > 0,
+                ),
+                _RestoreInfoRow(
+                  icon: Icons.account_balance,
+                  label: 'Долги',
+                  value: '${result['debtsCount']} шт.',
+                  isSuccess: result['debtsCount'] > 0,
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // Переходим на главный экран
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const HomeScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Продолжить'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        throw Exception(result['error'] ?? 'Неизвестная ошибка');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Ошибка восстановления: $e'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+        });
+      }
+    }
+  }
+
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -173,6 +280,40 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           ),
           child: const Center(
             child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
+    if (_isRestoring) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.deepPurple.shade50,
+                Colors.white,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 24),
+                Text(
+                  'Восстановление данных...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -266,6 +407,104 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                     child: ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
+                        // Кнопка восстановления (только для нового пользователя)
+                        if (!_isEditMode) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.blue.shade400,
+                                  Colors.blue.shade600,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.shade200,
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _restoreFromBackup,
+                                borderRadius: BorderRadius.circular(16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.3),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.restore_rounded,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      const Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Восстановить данные',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Загрузите резервную копию',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        color: Colors.white.withOpacity(0.7),
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'или создайте новый профиль',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
                         // Info message for edit mode
                         if (_isEditMode)
                           Container(
@@ -586,6 +825,51 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RestoreInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isSuccess;
+
+  const _RestoreInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isSuccess,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isSuccess ? Colors.green.shade700 : Colors.grey.shade500,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isSuccess ? Colors.green.shade700 : Colors.grey.shade600,
+            ),
+          ),
+        ],
       ),
     );
   }
