@@ -424,7 +424,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
             children: [
               // App Bar
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // ИЗМЕНЕНО
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -442,6 +442,8 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                         IconButton(
                           onPressed: () => Navigator.pop(context),
                           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                          padding: EdgeInsets.zero, // ДОБАВЛЕНО
+                          constraints: const BoxConstraints(), // ДОБАВЛЕНО
                         ),
                         const SizedBox(width: 8),
                         Container(
@@ -464,7 +466,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                               Text(
                                 'Долги и кредиты',
                                 style: TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 20, // ИЗМЕНЕНО с 22
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -473,7 +475,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                               Text(
                                 'Управление долгами',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12, // ИЗМЕНЕНО с 13
                                   color: Colors.white70,
                                 ),
                               ),
@@ -482,7 +484,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16), // ИЗМЕНЕНО с 20
                     // Summary Cards
                     Row(
                       children: [
@@ -1097,11 +1099,15 @@ class _DebtCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16), // ИЗМЕНЕНО с 20
+          border: Border.all( // ДОБАВЛЕНО
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.shade200,
-              blurRadius: 10,
+              color: Colors.grey.shade200, // ИЗМЕНЕНО
+              blurRadius: 8, // ИЗМЕНЕНО с 10
               offset: const Offset(0, 4),
             ),
           ],
@@ -1109,18 +1115,18 @@ class _DebtCard extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16), // ИЗМЕНЕНО с 20
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
+                  // Header - КОМПАКТНЕЕ
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10), // ИЗМЕНЕНО с 12
                         decoration: BoxDecoration(
                           color: accentColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10), // ИЗМЕНЕНО с 12
                         ),
                         child: Icon(
                           debt.type == DebtType.borrowed
@@ -1129,10 +1135,10 @@ class _DebtCard extends StatelessWidget {
                               ? Icons.arrow_upward_rounded
                               : Icons.account_balance_rounded,
                           color: accentColor,
-                          size: 24,
+                          size: 20, // ИЗМЕНЕНО с 24
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12), // ИЗМЕНЕНО с 16
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1140,17 +1146,17 @@ class _DebtCard extends StatelessWidget {
                             Text(
                               debt.description,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16, // ИЗМЕНЕНО с 18
                                 fontWeight: FontWeight.bold,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2), // ИЗМЕНЕНО с 4
                             Text(
                               debt.creditorDebtor,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13, // ИЗМЕНЕНО с 14
                                 color: Colors.grey.shade600,
                               ),
                               maxLines: 1,
@@ -1160,7 +1166,7 @@ class _DebtCard extends StatelessWidget {
                         ),
                       ),
                       PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert_rounded, color: Colors.grey.shade600),
+                        icon: Icon(Icons.more_vert_rounded, color: Colors.grey.shade600, size: 20), // ИЗМЕНЕНО
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1169,9 +1175,9 @@ class _DebtCard extends StatelessWidget {
                             value: 'edit',
                             child: Row(
                               children: [
-                                Icon(Icons.edit_rounded, size: 20, color: Colors.blue.shade700),
+                                Icon(Icons.edit_rounded, size: 18, color: Colors.blue.shade700), // ИЗМЕНЕНО
                                 const SizedBox(width: 12),
-                                const Text('Редактировать'),
+                                const Text('Редактировать', style: TextStyle(fontSize: 14)), // ДОБАВЛЕНО
                               ],
                             ),
                           ),
@@ -1179,9 +1185,9 @@ class _DebtCard extends StatelessWidget {
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(Icons.delete_rounded, size: 20, color: Colors.red.shade700),
+                                Icon(Icons.delete_rounded, size: 18, color: Colors.red.shade700), // ИЗМЕНЕНО
                                 const SizedBox(width: 12),
-                                const Text('Удалить'),
+                                const Text('Удалить', style: TextStyle(fontSize: 14)), // ДОБАВЛЕНО
                               ],
                             ),
                           ),
@@ -1197,16 +1203,16 @@ class _DebtCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12), // ИЗМЕНЕНО с 20
 
-                  // Status Badge
+                  // Status Badge - КОМПАКТНЕЕ
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // ИЗМЕНЕНО
                         decoration: BoxDecoration(
                           color: _getStatusColor().withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12), // ИЗМЕНЕНО с 20
                           border: Border.all(
                             color: _getStatusColor(),
                             width: 1.5,
@@ -1218,9 +1224,9 @@ class _DebtCard extends StatelessWidget {
                             Icon(
                               _getStatusIcon(),
                               color: _getStatusColor(),
-                              size: 14,
+                              size: 12, // ИЗМЕНЕНО с 14
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4), // ИЗМЕНЕНО с 6
                             Text(
                               _getStatusText(),
                               style: TextStyle(
@@ -1235,17 +1241,17 @@ class _DebtCard extends StatelessWidget {
                       if (debt.isOverdue) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // ИЗМЕНЕНО
                           decoration: BoxDecoration(
                             color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12), // ИЗМЕНЕНО
                             border: Border.all(color: Colors.red, width: 1.5),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.warning_rounded, color: Colors.red.shade700, size: 14),
-                              const SizedBox(width: 6),
+                              Icon(Icons.warning_rounded, color: Colors.red.shade700, size: 12), // ИЗМЕНЕНО
+                              const SizedBox(width: 4), // ИЗМЕНЕНО
                               Text(
                                 'Просрочен',
                                 style: TextStyle(
@@ -1261,9 +1267,9 @@ class _DebtCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16), // ИЗМЕНЕНО с 20
 
-                  // Amount Info
+                  // Amount Info - КОМПАКТНЕЕ
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1273,7 +1279,7 @@ class _DebtCard extends StatelessWidget {
                           Text(
                             'Остаток',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12, // ИЗМЕНЕНО с 13
                               color: Colors.grey.shade600,
                             ),
                           ),
@@ -1281,7 +1287,7 @@ class _DebtCard extends StatelessWidget {
                           Text(
                             _formatCurrency(debt.remainingWithInterest),
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: 20, // ИЗМЕНЕНО с 24
                               fontWeight: FontWeight.bold,
                               color: accentColor,
                             ),
@@ -1290,20 +1296,19 @@ class _DebtCard extends StatelessWidget {
                       ),
                       if (debt.interestRate > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // ИЗМЕНЕНО
                           decoration: BoxDecoration(
                             color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8), // ИЗМЕНЕНО с 10
                             border: Border.all(color: Colors.orange.shade200),
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.percent_rounded, color: Colors.orange.shade700, size: 16),
-                              const SizedBox(height: 2),
+                              Icon(Icons.percent_rounded, color: Colors.orange.shade700, size: 14), // ИЗМЕНЕНО с 16
                               Text(
                                 '${debt.interestRate.toStringAsFixed(1)}%',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11, // ИЗМЕНЕНО с 12
                                   fontWeight: FontWeight.bold,
                                   color: Colors.orange.shade700,
                                 ),
@@ -1315,8 +1320,8 @@ class _DebtCard extends StatelessWidget {
                   ),
 
                   if (!isPaid) ...[
-                    const SizedBox(height: 16),
-                    // Progress Bar
+                    const SizedBox(height: 12), // ИЗМЕНЕНО с 16
+                    // Progress Bar - СДЕЛАЛИ ШИРЕ
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1326,26 +1331,26 @@ class _DebtCard extends StatelessWidget {
                             Text(
                               'Выплачено: ${_formatCurrency(debt.paidAmount)}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11, // ИЗМЕНЕНО с 12
                                 color: Colors.grey.shade600,
                               ),
                             ),
                             Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11, // ИЗМЕНЕНО с 12
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey.shade700,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6), // ИЗМЕНЕНО с 8
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
                             value: progress,
-                            minHeight: 8,
+                            minHeight: 10, // УВЕЛИЧЕНО с 8 - ТЕПЕРЬ ШИРЕ!
                             backgroundColor: Colors.grey.shade200,
                             valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                           ),
@@ -1356,19 +1361,19 @@ class _DebtCard extends StatelessWidget {
 
                   // Due Date
                   if (debt.dueDate != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12), // ИЗМЕНЕНО с 16
                     Row(
                       children: [
                         Icon(
                           Icons.calendar_today_rounded,
-                          size: 16,
+                          size: 14, // ИЗМЕНЕНО с 16
                           color: debt.isOverdue ? Colors.red.shade700 : Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6), // ИЗМЕНЕНО с 8
                         Text(
                           'До ${debt.dueDate!.day}.${debt.dueDate!.month}.${debt.dueDate!.year}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12, // ИЗМЕНЕНО с 13
                             color: debt.isOverdue ? Colors.red.shade700 : Colors.grey.shade600,
                             fontWeight: debt.isOverdue ? FontWeight.bold : FontWeight.normal,
                           ),
@@ -1380,7 +1385,7 @@ class _DebtCard extends StatelessWidget {
               ),
             ),
 
-            // Add Payment Button
+            // Add Payment Button - КОМПАКТНЕЕ
             if (onAddPayment != null)
               Container(
                 decoration: BoxDecoration(
@@ -1392,18 +1397,18 @@ class _DebtCard extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: onAddPayment,
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), // ИЗМЕНЕНО
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12), // ИЗМЕНЕНО с 14
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_circle_outline_rounded, color: accentColor, size: 20),
+                          Icon(Icons.add_circle_outline_rounded, color: accentColor, size: 18), // ИЗМЕНЕНО с 20
                           const SizedBox(width: 8),
                           Text(
                             'Добавить платеж',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14, // ИЗМЕНЕНО с 15
                               fontWeight: FontWeight.bold,
                               color: accentColor,
                             ),

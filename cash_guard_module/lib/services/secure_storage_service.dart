@@ -20,7 +20,37 @@ class SecureStorageService {
     ),
   );
 
-  // Работа с паролем
+  // ========== НАСТРОЙКИ БИОМЕТРИИ ==========
+
+  /// Включить/отключить биометрическую аутентификацию
+  Future<void> setBiometricEnabled(bool enabled) async {
+    await _secureStorage.write(
+      key: 'biometric_enabled',
+      value: enabled.toString(),
+    );
+  }
+
+  /// Проверить, включена ли биометрическая аутентификация
+  Future<bool> getBiometricEnabled() async {
+    final value = await _secureStorage.read(key: 'biometric_enabled');
+    return value == 'true';
+  }
+
+  // ========== НАСТРОЙКИ ТЕМЫ ==========
+
+  /// Установить режим темы ('light', 'dark', 'system')
+  Future<void> setThemeMode(String mode) async {
+    await _secureStorage.write(key: 'theme_mode', value: mode);
+  }
+
+  /// Получить текущий режим темы
+  Future<String> getThemeMode() async {
+    final mode = await _secureStorage.read(key: 'theme_mode');
+    return mode ?? 'system'; // По умолчанию системная тема
+  }
+
+  // ========== РАБОТА С ПАРОЛЕМ ==========
+
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final hash = sha256.convert(bytes);
@@ -48,7 +78,8 @@ class SecureStorageService {
     await _secureStorage.delete(key: 'user_password');
   }
 
-  // Работа с данными пользователя
+  // ========== РАБОТА С ДАННЫМИ ПОЛЬЗОВАТЕЛЯ ==========
+
   Future<void> saveUserData(User user) async {
     final jsonString = jsonEncode(user.toJson());
     await _secureStorage.write(key: 'user_data', value: jsonString);
@@ -70,7 +101,8 @@ class SecureStorageService {
     await _secureStorage.delete(key: 'user_data');
   }
 
-  // Работа с транзакциями
+  // ========== РАБОТА С ТРАНЗАКЦИЯМИ ==========
+
   Future<void> saveTransactions(List<Transaction> transactions) async {
     final jsonString = jsonEncode(
       transactions.map((t) => t.toJson()).toList(),
@@ -97,7 +129,8 @@ class SecureStorageService {
     await saveTransactions(transactions);
   }
 
-  // Работа с начальным балансом
+  // ========== РАБОТА С НАЧАЛЬНЫМ БАЛАНСОМ ==========
+
   Future<void> saveInitialBalance(double balance) async {
     await _secureStorage.write(
       key: 'initial_balance',
@@ -105,7 +138,14 @@ class SecureStorageService {
     );
   }
 
-  // Работа с долгами
+  Future<double> getInitialBalance() async {
+    final balance = await _secureStorage.read(key: 'initial_balance');
+    if (balance == null) return 0;
+    return double.tryParse(balance) ?? 0;
+  }
+
+  // ========== РАБОТА С ДОЛГАМИ ==========
+
   Future<void> saveDebts(List<Debt> debts) async {
     final jsonString = jsonEncode(
       debts.map((d) => d.toJson()).toList(),
@@ -141,11 +181,7 @@ class SecureStorageService {
     await saveDebts(debts);
   }
 
-  Future<double> getInitialBalance() async {
-    final balance = await _secureStorage.read(key: 'initial_balance');
-    if (balance == null) return 0;
-    return double.tryParse(balance) ?? 0;
-  }
+  // ========== ОЧИСТКА ВСЕХ ДАННЫХ ==========
 
   Future<void> clearAllData() async {
     await _secureStorage.deleteAll();

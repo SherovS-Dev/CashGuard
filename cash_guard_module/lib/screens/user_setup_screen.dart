@@ -336,7 +336,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
             children: [
               // Custom App Bar
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -353,9 +353,12 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       )
                     else
-                      const SizedBox(width: 8),
+                      const SizedBox.shrink(),
+                    if (_isEditMode) const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -376,7 +379,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                           Text(
                             _isEditMode ? 'Редактирование профиля' : 'Настройка профиля',
                             style: const TextStyle(
-                              fontSize: 22,
+                              fontSize: 20, // ИЗМЕНЕНО с 22
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -387,7 +390,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                 ? 'Измените свои данные'
                                 : 'Добавьте свои финансовые данные',
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12, // ИЗМЕНЕНО с 13
                               color: Colors.white70,
                             ),
                           ),
@@ -997,20 +1000,16 @@ class _CashLocationForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.orange.shade300,
-            Colors.orange.shade500,
-          ],
-        ),
+        color: Colors.white, // ИЗМЕНЕНО - убрали градиент
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.orange.shade300, // ДОБАВЛЕНО
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.shade200,
+            color: Colors.grey.shade200, // ИЗМЕНЕНО
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -1018,52 +1017,49 @@ class _CashLocationForm extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(10),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50, // ИЗМЕНЕНО
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon( // ИЗМЕНЕНО
+                        Icons.location_on_rounded,
+                        color: Colors.orange.shade600,
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.location_on_rounded,
-                      color: Colors.white,
-                      size: 20,
+                    const SizedBox(width: 12),
+                    Text(
+                      'Место ${index + 1}',
+                      style: TextStyle( // ИЗМЕНЕНО
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Место ${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.delete_rounded),
-                color: Colors.white,
-                tooltip: 'Удалить',
-              ),
-            ],
+                  ],
+                ),
+                IconButton(
+                  onPressed: onRemove,
+                  icon: Icon(Icons.delete_rounded, color: Colors.red.shade400), // ИЗМЕНЕНО
+                  tooltip: 'Удалить',
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+
+          Divider(height: 1, color: Colors.grey.shade200), // ДОБАВЛЕНО
+
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
             child: Column(
               children: [
                 TextFormField(
@@ -1168,25 +1164,25 @@ class _ModernBankCardForm extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
+        color: Colors.white, // ИЗМЕНЕНО - убрали градиент
+        borderRadius: BorderRadius.circular(16), // ИЗМЕНЕНО с 20
+        border: Border.all(
+          color: colors[0].withOpacity(0.3), // ДОБАВЛЕНО
+          width: 2,
         ),
-        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colors[0].withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.grey.shade200, // ИЗМЕНЕНО
+            blurRadius: 8, // ИЗМЕНЕНО
+            offset: const Offset(0, 4), // ИЗМЕНЕНО
           ),
         ],
       ),
       child: Column(
         children: [
-          // Card Header
+          // Card Header - ИЗМЕНЕНО
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16), // ИЗМЕНЕНО с 20
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1195,46 +1191,40 @@ class _ModernBankCardForm extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: colors[0].withOpacity(0.1), // ИЗМЕНЕНО
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon( // ИЗМЕНЕНО цвет
                         Icons.credit_card_rounded,
-                        color: Colors.white,
+                        color: colors[0],
                         size: 20,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Карта ${index + 1}',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle( // ИЗМЕНЕНО
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.grey.shade800,
                       ),
                     ),
                   ],
                 ),
                 IconButton(
                   onPressed: onRemove,
-                  icon: const Icon(Icons.delete_rounded),
-                  color: Colors.white,
+                  icon: Icon(Icons.delete_rounded, color: Colors.red.shade400), // ИЗМЕНЕНО
                   tooltip: 'Удалить карту',
                 ),
               ],
             ),
           ),
 
+          Divider(height: 1, color: Colors.grey.shade200), // ДОБАВЛЕНО
+
           // Card Form
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
+            padding: const EdgeInsets.all(16), // ИЗМЕНЕНО с 20
             child: Column(
               children: [
                 _CardFormField(

@@ -19,6 +19,8 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
   bool _isPasswordSet = false;
   bool _isLoading = true;
   bool _obscurePassword = true;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
   String? _errorMessage;
 
   late AnimationController _animationController;
@@ -47,18 +49,27 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
 
   Future<void> _checkPasswordStatus() async {
     final isSet = await _storageService.isPasswordSet();
+    final biometricEnabled = await _storageService.getBiometricEnabled();
+    final biometricAvailable = await _biometricService.canUseBiometrics();
+
     setState(() {
       _isPasswordSet = isSet;
+      _biometricEnabled = biometricEnabled;
+      _biometricAvailable = biometricAvailable;
       _isLoading = false;
     });
 
-    // Автоматически показываем биометрию при запуске, если пароль установлен
-    if (_isPasswordSet) {
-      await _authenticateWithBiometrics();
-    }
+    // НЕ запускаем биометрию автоматически
   }
 
   Future<void> _authenticateWithBiometrics() async {
+    if (!_biometricEnabled) {
+      setState(() {
+        _errorMessage = 'Биометрическая аутентификация отключена в настройках';
+      });
+      return;
+    }
+
     final errorMessage = await _biometricService.getBiometricErrorMessage();
     if (errorMessage != null) {
       setState(() {
@@ -169,6 +180,12 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
         ),
       );
     }
+
+    // Показываем биометрическую кнопку только если:
+    // 1. Пароль установлен
+    // 2. Биометрия включена в настройках
+    // 3. Биометрия доступна на устройстве
+    final showBiometric = _isPasswordSet && _biometricEnabled && _biometricAvailable;
 
     return Scaffold(
       body: Container(
@@ -419,8 +436,8 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                             ),
                           ),
 
-                          // Biometric button
-                          if (_isPasswordSet) ...[
+                          // Biometric button - показываем только если включена
+                          if (showBiometric) ...[
                             const SizedBox(height: 16),
                             const Row(
                               children: [
