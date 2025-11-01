@@ -1,4 +1,3 @@
-// cash_guard_module/lib/screens/user_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/bank_card.dart';
@@ -326,11 +325,17 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const HomeScreen(),
-      ),
-    );
+    // В режиме редактирования просто возвращаемся назад
+    if (_isEditMode) {
+      Navigator.of(context).pop(true);
+    } else {
+      // В режиме создания переходим на главный экран
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(),
+        ),
+      );
+    }
   }
 
   @override
@@ -434,7 +439,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -482,7 +487,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -514,7 +519,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -546,7 +551,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -621,7 +626,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.3),
+                                          color: Colors.white.withValues(alpha: 0.3),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Icon(
@@ -656,7 +661,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       ),
                                       Icon(
                                         Icons.arrow_forward_ios_rounded,
-                                        color: Colors.white.withOpacity(0.7),
+                                        color: Colors.white.withValues(alpha: 0.7),
                                         size: 20,
                                       ),
                                     ],
@@ -1458,7 +1463,7 @@ class _ModernBankCardForm extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colors[0].withOpacity(0.3),
+          color: colors[0].withValues(alpha: 0.3),
           width: 2,
         ),
         boxShadow: [
@@ -1482,7 +1487,7 @@ class _ModernBankCardForm extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: colors[0].withOpacity(0.1),
+                        color: colors[0].withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -1626,7 +1631,7 @@ class _MobileWalletForm extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colors[0].withOpacity(0.3),
+          color: colors[0].withValues(alpha: 0.3),
           width: 2,
         ),
         boxShadow: [
@@ -1650,7 +1655,7 @@ class _MobileWalletForm extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: colors[0].withOpacity(0.1),
+                        color: colors[0].withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(

@@ -144,8 +144,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
 
       case LocationType.card:
+      // ИСПРАВЛЕНО: Парсим уникальный ID для поиска нужной карты
+        final parts = location.id?.split('|');
+        if (parts == null || parts.length != 2) {
+          return user; // Если ID некорректный, возвращаем без изменений
+        }
+
+        final cardName = parts[0];
+        final last4Digits = parts[1];
+
         final updatedCards = user.bankCards.map((card) {
-          if (card.cardNumber == location.id) {
+          // Проверяем совпадение по имени И последним 4 цифрам
+          final cardLast4 = card.cardNumber.substring(card.cardNumber.length - 4);
+          if (card.cardName == cardName && cardLast4 == last4Digits) {
             return BankCard(
               cardName: card.cardName,
               cardNumber: card.cardNumber,
@@ -164,6 +175,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
 
       case LocationType.mobileWallet:
+      // ИСПРАВЛЕНО: Используем name вместо phoneNumber для совместимости
         final updatedWallets = user.mobileWallets.map((wallet) {
           if (wallet.name == location.name) {
             return MobileWallet(
@@ -305,7 +317,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.deepPurple.shade200.withOpacity(0.5),
+                            color: Colors.deepPurple.shade200.withValues(alpha: 0.5),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
@@ -320,7 +332,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 'Начальный баланс',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                 ),
                               ),
                               Text(
@@ -488,10 +500,10 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -504,7 +516,7 @@ class _StatCard extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(height: 4),
@@ -571,7 +583,7 @@ class _TransactionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

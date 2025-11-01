@@ -57,15 +57,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       );
     }
 
-    // Добавляем все банковские карты
+    // ИСПРАВЛЕНО: Используем уникальный ID для карт (название + последние 4 цифры)
     for (var card in user.bankCards) {
+      // Создаем уникальный ID: "cardName|last4digits"
+      final uniqueId = '${card.cardName}|${card.cardNumber.substring(card.cardNumber.length - 4)}';
+
       locations.add(
         TransactionLocation(
           type: LocationType.card,
           name: card.bankName != null
               ? '${card.bankName} •${card.cardNumber.substring(card.cardNumber.length - 4)}'
               : '${card.cardName} •${card.cardNumber.substring(card.cardNumber.length - 4)}',
-          id: card.cardNumber,
+          id: uniqueId,  // ИСПРАВЛЕНО: используем уникальный ID
         ),
       );
     }
@@ -201,8 +204,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         );
 
       case LocationType.card:
+      // ИСПРАВЛЕНО: Парсим уникальный ID для поиска нужной карты
+        final parts = location.id?.split('|');
+        if (parts == null || parts.length != 2) {
+          return user; // Если ID некорректный, возвращаем без изменений
+        }
+
+        final cardName = parts[0];
+        final last4Digits = parts[1];
+
         final updatedCards = user.bankCards.map((card) {
-          if (card.cardNumber == location.id) {
+          // Проверяем совпадение по имени И последним 4 цифрам
+          final cardLast4 = card.cardNumber.substring(card.cardNumber.length - 4);
+          if (card.cardName == cardName && cardLast4 == last4Digits) {
             return BankCard(
               cardName: card.cardName,
               cardNumber: card.cardNumber,
@@ -222,7 +236,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       case LocationType.mobileWallet:
         final updatedWallets = user.mobileWallets.map((wallet) {
-          if (wallet.phoneNumber == location.id) {
+          // ИСПРАВЛЕНО: Используем name вместо phoneNumber для идентификации
+          if (wallet.name == location.name) {
             return MobileWallet(
               name: wallet.name,
               phoneNumber: wallet.phoneNumber,
