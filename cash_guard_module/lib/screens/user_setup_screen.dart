@@ -690,40 +690,6 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                           const SizedBox(height: 20),
                         ],
 
-                        // Info message for edit mode
-                        if (_isEditMode)
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.blue.shade200,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: Colors.blue.shade700,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Вы можете изменить существующие данные или добавить новые места хранения средств',
-                                    style: TextStyle(
-                                      color: Colors.blue.shade700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
                         // Personal Info Section
                         _SectionHeader(
                           icon: Icons.account_circle_rounded,
