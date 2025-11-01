@@ -216,7 +216,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            Colors.white.withOpacity(0.2),
+                            Colors.white.withValues(alpha: 0.2),
                             Colors.transparent,
                           ],
                         ),
@@ -225,10 +225,10 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               blurRadius: 30,
                               spreadRadius: 5,
                             ),
@@ -252,7 +252,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                         letterSpacing: 1.5,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             offset: const Offset(0, 4),
                             blurRadius: 8,
                           ),
@@ -264,7 +264,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                       _isPasswordSet ? '✨ Добро пожаловать обратно!' : '🔐 Создайте защиту',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.5,
                       ),
@@ -275,15 +275,15 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                       constraints: const BoxConstraints(maxWidth: 400),
                       padding: const EdgeInsets.all(28),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 30,
                             offset: const Offset(0, 10),
                             spreadRadius: 5,
@@ -403,7 +403,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.deepPurple.shade300.withOpacity(0.5),
+                                  color: Colors.deepPurple.shade300.withValues(alpha: 0.5),
                                   blurRadius: 12,
                                   offset: const Offset(0, 6),
                                 ),
@@ -497,10 +497,10 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -509,14 +509,14 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                         children: [
                           Icon(
                             Icons.verified_user_rounded,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             size: 16,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Защищено шифрованием',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),

@@ -159,10 +159,10 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -198,11 +198,11 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -254,10 +254,10 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         width: 1.5,
                       ),
                     ),
@@ -267,7 +267,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                           children: [
                             Icon(
                               Icons.info_outline_rounded,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               size: 24,
                             ),
                             const SizedBox(width: 12),
@@ -279,7 +279,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                 ),
                               ),
                             ),
@@ -296,7 +296,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                               '4. Перезапустите приложение',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             height: 1.5,
                           ),
                         ),
@@ -318,7 +318,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -349,7 +349,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                           child: Text(
                             'Проверить снова',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                             ),
@@ -366,7 +366,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/backup_service.dart';
-import '../services/secure_storage_service.dart';
 import 'home_screen.dart';
 
 class BackupScreen extends StatefulWidget {
@@ -13,7 +12,6 @@ class BackupScreen extends StatefulWidget {
 
 class _BackupScreenState extends State<BackupScreen> {
   final _backupService = BackupService();
-  final _storageService = SecureStorageService();
   bool _isProcessing = false;
 
   Future<void> _createAndShareBackup() async {
@@ -317,7 +315,7 @@ class _BackupScreenState extends State<BackupScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
@@ -566,7 +564,7 @@ class _BackupActionCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               width: 2,
             ),
             boxShadow: [
@@ -582,7 +580,7 @@ class _BackupActionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

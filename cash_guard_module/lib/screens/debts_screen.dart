@@ -449,7 +449,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -688,7 +688,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(debt.status).withOpacity(0.1),
+                      color: _getStatusColor(debt.status).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _getStatusColor(debt.status),
@@ -908,7 +908,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: accentColor.withOpacity(0.3),
+                        color: accentColor.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -1034,10 +1034,10 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -1125,7 +1125,7 @@ class _DebtCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(10), // ИЗМЕНЕНО с 12
                         decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.1),
+                          color: accentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10), // ИЗМЕНЕНО с 12
                         ),
                         child: Icon(
@@ -1211,7 +1211,7 @@ class _DebtCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // ИЗМЕНЕНО
                         decoration: BoxDecoration(
-                          color: _getStatusColor().withOpacity(0.1),
+                          color: _getStatusColor().withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12), // ИЗМЕНЕНО с 20
                           border: Border.all(
                             color: _getStatusColor(),

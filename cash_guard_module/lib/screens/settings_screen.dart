@@ -5,7 +5,9 @@ import 'backup_screen.dart';
 import 'lock_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final Function(ThemeMode)? onThemeChanged;
+
+  const SettingsScreen({super.key, this.onThemeChanged});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -17,7 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
-  String _themeMode = 'system'; // 'light', 'dark', 'system'
+  String _themeMode = 'system';
   bool _isLoading = true;
 
   @override
@@ -27,10 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    // Проверяем доступность биометрии
     final biometricAvailable = await _biometricService.canUseBiometrics();
-
-    // Загружаем настройки
     final biometricEnabled = await _storageService.getBiometricEnabled();
     final themeMode = await _storageService.getThemeMode();
 
@@ -43,49 +42,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
-    if (value) {
-      // Включаем биометрию - требуем аутентификацию
-      final authenticated = await _biometricService.authenticate(
-        reason: 'Подтвердите для включения биометрии',
-      );
-
-      if (authenticated) {
-        await _storageService.setBiometricEnabled(true);
-        setState(() {
-          _biometricEnabled = true;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Биометрия включена'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Не удалось подтвердить биометрию'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } else {
-      // Выключаем биометрию
-      await _storageService.setBiometricEnabled(false);
-      setState(() {
-        _biometricEnabled = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Биометрия отключена'),
-            backgroundColor: Colors.orange,
+    if (!_biometricAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Биометрия недоступна на этом устройстве'),
+              ),
+            ],
           ),
-        );
-      }
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Просто включаем/выключаем без требования аутентификации
+    await _storageService.setBiometricEnabled(value);
+    setState(() {
+      _biometricEnabled = value;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                value ? Icons.check_circle : Icons.info_outline,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value
+                      ? 'Биометрия включена. Теперь вы можете использовать её для входа'
+                      : 'Биометрия отключена',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: value ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -94,10 +97,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _themeMode = mode;
     });
+
+    // Применяем тему
+    ThemeMode themeMode;
+    switch (mode) {
+      case 'light':
+        themeMode = ThemeMode.light;
+        break;
+      case 'dark':
+        themeMode = ThemeMode.dark;
+        break;
+      default:
+        themeMode = ThemeMode.system;
+    }
+
+    // Вызываем callback для изменения темы
+    widget.onThemeChanged?.call(themeMode);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Тема изменена: ${_getThemeName(mode)}'),
+          content: Row(
+            children: [
+              const Icon(Icons.palette, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Тема изменена: ${_getThemeName(mode)}'),
+            ],
+          ),
           backgroundColor: Colors.blue,
         ),
       );
@@ -256,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   subtitle: Text(
                     _biometricAvailable
-                        ? 'Используйте отпечаток или Face ID'
+                        ? 'Используйте отпечаток или Face ID для входа'
                         : 'Биометрия недоступна на устройстве',
                     style: TextStyle(
                       fontSize: 13,
