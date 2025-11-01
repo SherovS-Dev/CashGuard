@@ -1,8 +1,6 @@
-name: cash_gurad
-description: Flutter приложение с защитой паролем и биометрической аутентификацией
-
+name: cash_guard
+description: A secure finance management application with biometric authentication
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
@@ -12,13 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Биометрическая аутентификация
-  local_auth: ^2.2.0
+  # Локальная аутентификация (биометрия)
+  local_auth: ^2.1.7
 
-  # Локальное хранилище для пароля
+  # Безопасное хранилище данных
   flutter_secure_storage: ^9.0.0
 
-  # Криптография для хеширования пароля
+  # Криптография для хеширования паролей
   crypto: ^3.0.3
 
 dev_dependencies:
