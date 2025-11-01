@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/secure_storage_service.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
+import 'add_transaction_screen.dart';
+import 'transactions_screen.dart';
 import '../models/user.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -40,6 +42,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<void> _loadUserData() async {
     final user = await _storageService.getUserData();
+
+    // Сохраняем начальный баланс, если его еще нет
+    final initialBalance = await _storageService.getInitialBalance();
+    if (initialBalance == 0 && user != null) {
+      await _storageService.saveInitialBalance(user.totalBalance);
+    }
+
     setState(() {
       _user = user;
       _isLoading = false;
@@ -105,6 +114,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (result == true) {
       _loadUserData();
     }
+  }
+
+  Future<void> _addTransaction() async {
+    if (!mounted) return;
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddTransactionScreen(),
+      ),
+    );
+
+    if (result == true) {
+      _loadUserData();
+    }
+  }
+
+  void _openTransactions() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const TransactionsScreen(),
+      ),
+    );
   }
 
   String _formatCurrency(double amount) {
@@ -242,6 +273,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.history_rounded),
+                  tooltip: 'Транзакции',
+                  onPressed: _openTransactions,
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit_rounded),
                   tooltip: 'Редактировать',
@@ -426,13 +462,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                         ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addTransaction,
+        backgroundColor: Colors.deepPurple.shade600,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text(
+          'Транзакция',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

@@ -18,6 +18,11 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   final _storageService = SecureStorageService();
 
   final List<BankCardInput> _bankCards = [];
+  final List<CashLocationInput> _cashLocations = [];
+
+  bool _isLoading = true;
+  bool _isEditMode = false;
+  User? _existingUser;
 
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -36,6 +41,34 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       parent: _animationController,
       curve: Curves.easeOut,
     ));
+    _loadExistingData();
+  }
+
+  Future<void> _loadExistingData() async {
+    final user = await _storageService.getUserData();
+
+    if (user != null) {
+      setState(() {
+        _existingUser = user;
+        _isEditMode = true;
+        _nameController.text = user.name;
+        _cashInHandController.text = user.cashInHand.toString();
+
+        // Загружаем банковские карты
+        for (var card in user.bankCards) {
+          final cardInput = BankCardInput();
+          cardInput.nameController.text = card.cardName;
+          cardInput.numberController.text = card.cardNumber;
+          cardInput.balanceController.text = card.balance.toString();
+          cardInput.bankController.text = card.bankName ?? '';
+          _bankCards.add(cardInput);
+        }
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
     _animationController.forward();
   }
 
@@ -46,6 +79,9 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     _animationController.dispose();
     for (var card in _bankCards) {
       card.dispose();
+    }
+    for (var location in _cashLocations) {
+      location.dispose();
     }
     super.dispose();
   }
@@ -63,14 +99,35 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     });
   }
 
+  void _addCashLocation() {
+    setState(() {
+      _cashLocations.add(CashLocationInput());
+    });
+  }
+
+  void _removeCashLocation(int index) {
+    setState(() {
+      _cashLocations[index].dispose();
+      _cashLocations.removeAt(index);
+    });
+  }
+
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    // Собираем основные наличные
+    double totalCash = double.tryParse(_cashInHandController.text) ?? 0;
+
+    // Добавляем наличные из дополнительных мест
+    for (var location in _cashLocations) {
+      totalCash += double.tryParse(location.amountController.text) ?? 0;
+    }
+
     final user = User(
       name: _nameController.text.trim(),
-      cashInHand: double.tryParse(_cashInHandController.text) ?? 0,
+      cashInHand: totalCash,
       bankCards: _bankCards.map((input) {
         return BankCard(
           cardName: input.nameController.text.trim(),
@@ -85,6 +142,11 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
     await _storageService.saveUserData(user);
 
+    // Если это первая настройка (не редактирование), сохраняем начальный баланс
+    if (!_isEditMode) {
+      await _storageService.saveInitialBalance(user.totalBalance);
+    }
+
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
@@ -96,6 +158,26 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.deepPurple.shade50,
+                Colors.white,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -126,35 +208,44 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                 ),
                 child: Row(
                   children: [
+                    if (_isEditMode)
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      )
+                    else
+                      const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.person_add_rounded,
+                      child: Icon(
+                        _isEditMode ? Icons.edit_rounded : Icons.person_add_rounded,
                         color: Colors.white,
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Настройка профиля',
-                            style: TextStyle(
+                            _isEditMode ? 'Редактирование профиля' : 'Настройка профиля',
+                            style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
-                            'Добавьте свои финансовые данные',
-                            style: TextStyle(
+                            _isEditMode
+                                ? 'Измените свои данные'
+                                : 'Добавьте свои финансовые данные',
+                            style: const TextStyle(
                               fontSize: 13,
                               color: Colors.white70,
                             ),
@@ -175,6 +266,40 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                     child: ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
+                        // Info message for edit mode
+                        if (_isEditMode)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.blue.shade200,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.blue.shade700,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Вы можете изменить существующие данные или добавить новые места хранения средств',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                         // Personal Info Section
                         _SectionHeader(
                           icon: Icons.account_circle_rounded,
@@ -202,7 +327,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                         // Cash Field
                         _ModernTextField(
                           controller: _cashInHandController,
-                          label: 'Наличные',
+                          label: 'Наличные (основное место)',
                           hint: '0.00',
                           icon: Icons.payments_rounded,
                           suffix: const Text(
@@ -230,15 +355,101 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
                         const SizedBox(height: 32),
 
+                        // Additional Cash Locations Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: _SectionHeader(
+                                icon: Icons.account_balance_wallet_rounded,
+                                title: 'Дополнительные места (наличные)',
+                                color: Colors.orange.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.orange.shade400,
+                                    Colors.orange.shade600,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.shade200,
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: _addCashLocation,
+                                icon: const Icon(Icons.add_rounded),
+                                color: Colors.white,
+                                tooltip: 'Добавить место',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (_cashLocations.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey.shade200,
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.add_location_alt_rounded,
+                                  size: 32,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Нет дополнительных мест',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...List.generate(_cashLocations.length, (index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _CashLocationForm(
+                                locationInput: _cashLocations[index],
+                                onRemove: () => _removeCashLocation(index),
+                                index: index,
+                              ),
+                            );
+                          }),
+
+                        const SizedBox(height: 32),
+
                         // Bank Cards Section
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _SectionHeader(
-                              icon: Icons.credit_card_rounded,
-                              title: 'Банковские карты',
-                              color: Colors.blue.shade600,
+                            Flexible(
+                              child: _SectionHeader(
+                                icon: Icons.credit_card_rounded,
+                                title: 'Банковские карты',
+                                color: Colors.blue.shade600,
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -349,14 +560,14 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.check_circle_rounded, color: Colors.white),
-                                SizedBox(width: 12),
+                                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                                const SizedBox(width: 12),
                                 Text(
-                                  'Сохранить и продолжить',
-                                  style: TextStyle(
+                                  _isEditMode ? 'Сохранить изменения' : 'Сохранить и продолжить',
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -394,15 +605,18 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Flexible(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -470,6 +684,159 @@ class _ModernTextField extends StatelessWidget {
             vertical: 16,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class CashLocationInput {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
+
+  void dispose() {
+    nameController.dispose();
+    amountController.dispose();
+  }
+}
+
+class _CashLocationForm extends StatelessWidget {
+  final CashLocationInput locationInput;
+  final VoidCallback onRemove;
+  final int index;
+
+  const _CashLocationForm({
+    required this.locationInput,
+    required this.onRemove,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.orange.shade300,
+            Colors.orange.shade500,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.shade200,
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.location_on_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Место ${index + 1}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_rounded),
+                color: Colors.white,
+                tooltip: 'Удалить',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: locationInput.nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Название места',
+                    hintText: 'Например: В сейфе',
+                    prefixIcon: const Icon(Icons.label_rounded, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Введите название';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: locationInput.amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Сумма',
+                    hintText: '0.00',
+                    prefixIcon: const Icon(Icons.payments_rounded, size: 20),
+                    suffixText: '₽',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Введите сумму';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Введите корректную сумму';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
