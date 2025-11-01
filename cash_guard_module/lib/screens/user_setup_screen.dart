@@ -1,3 +1,4 @@
+// cash_guard_module/lib/screens/user_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/bank_card.dart';
@@ -113,6 +114,9 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     }
     for (var location in _cashLocations) {
       location.dispose();
+    }
+    for (var wallet in _mobileWallets) {
+      wallet.dispose();
     }
     super.dispose();
   }
@@ -468,8 +472,8 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                       ],
                     ),
 
-                    // НОВОЕ: Счетчики карт и мест
-                    if (_bankCards.isNotEmpty || _cashLocations.isNotEmpty) ...[
+                    // Счетчики
+                    if (_bankCards.isNotEmpty || _cashLocations.isNotEmpty || _mobileWallets.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -492,7 +496,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${_bankCards.length} карт${_bankCards.length == 1 ? "а" : _bankCards.length < 5 ? "ы" : ""}',
+                                      '${_bankCards.length}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
@@ -503,7 +507,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                 ),
                               ),
                             ),
-                          if (_bankCards.isNotEmpty && _cashLocations.isNotEmpty)
+                          if (_bankCards.isNotEmpty && (_cashLocations.isNotEmpty || _mobileWallets.isNotEmpty))
                             const SizedBox(width: 8),
                           if (_cashLocations.isNotEmpty)
                             Expanded(
@@ -524,7 +528,39 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${_cashLocations.length} мест${_cashLocations.length == 1 ? "о" : _cashLocations.length < 5 ? "а" : ""}',
+                                      '${_cashLocations.length}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (_mobileWallets.isNotEmpty && (_bankCards.isNotEmpty || _cashLocations.isNotEmpty))
+                            const SizedBox(width: 8),
+                          if (_mobileWallets.isNotEmpty)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.phone_android_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_mobileWallets.length}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
@@ -707,7 +743,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
                         const SizedBox(height: 16),
 
-                        // ИСПРАВЛЕНО: Cash Field теперь четко указывает что это наличные в руке
+                        // Cash Field
                         _ModernTextField(
                           controller: _cashInHandController,
                           label: 'Наличные в руке',
@@ -916,6 +952,100 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                               child: _ModernBankCardForm(
                                 cardInput: _bankCards[index],
                                 onRemove: () => _removeBankCard(index),
+                                index: index,
+                              ),
+                            );
+                          }),
+
+                        const SizedBox(height: 32),
+
+                        // Mobile Wallets Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: _SectionHeader(
+                                icon: Icons.phone_android_rounded,
+                                title: 'Мобильные кошельки',
+                                color: Colors.teal.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.teal.shade400,
+                                    Colors.teal.shade600,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.teal.shade200,
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: _addMobileWallet,
+                                icon: const Icon(Icons.add_rounded),
+                                color: Colors.white,
+                                tooltip: 'Добавить кошелек',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Wallets List
+                        if (_mobileWallets.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.grey.shade200,
+                                width: 2,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.phonelink_off_rounded,
+                                  size: 64,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Нет мобильных кошельков',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Нажмите + чтобы добавить кошелек',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...List.generate(_mobileWallets.length, (index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _MobileWalletForm(
+                                walletInput: _mobileWallets[index],
+                                onRemove: () => _removeMobileWallet(index),
                                 index: index,
                               ),
                             );
@@ -1440,6 +1570,160 @@ class _ModernBankCardForm extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.blue,
+                    ),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Введите баланс';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Введите корректную сумму';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileWalletForm extends StatelessWidget {
+  final MobileWalletInput walletInput;
+  final VoidCallback onRemove;
+  final int index;
+
+  const _MobileWalletForm({
+    required this.walletInput,
+    required this.onRemove,
+    required this.index,
+  });
+
+  List<Color> _getWalletGradient(int index) {
+    final gradients = [
+      [Colors.teal.shade400, Colors.teal.shade700],
+      [Colors.cyan.shade400, Colors.cyan.shade700],
+      [Colors.green.shade400, Colors.green.shade700],
+      [Colors.indigo.shade400, Colors.indigo.shade700],
+      [Colors.lime.shade400, Colors.lime.shade700],
+    ];
+    return gradients[index % gradients.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _getWalletGradient(index);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors[0].withOpacity(0.3),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Wallet Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colors[0].withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.phone_android_rounded,
+                        color: colors[0],
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Кошелек ${index + 1}',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: onRemove,
+                  icon: Icon(Icons.delete_rounded, color: Colors.red.shade400),
+                  tooltip: 'Удалить кошелек',
+                ),
+              ],
+            ),
+          ),
+
+          Divider(height: 1, color: Colors.grey.shade200),
+
+          // Wallet Form
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _CardFormField(
+                  controller: walletInput.nameController,
+                  label: 'Название кошелька',
+                  hint: 'Например: Яндекс.Деньги',
+                  icon: Icons.label_rounded,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Введите название';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                _CardFormField(
+                  controller: walletInput.phoneController,
+                  label: 'Номер телефона',
+                  hint: '+79001234567',
+                  icon: Icons.phone_rounded,
+                  keyboardType: TextInputType.phone,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Введите номер телефона';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                _CardFormField(
+                  controller: walletInput.balanceController,
+                  label: 'Баланс',
+                  hint: '0.00',
+                  icon: Icons.account_balance_wallet_rounded,
+                  suffix: const Text(
+                    '₽',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.teal,
                     ),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),

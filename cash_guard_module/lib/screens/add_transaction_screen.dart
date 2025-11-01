@@ -76,7 +76,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         TransactionLocation(
           type: LocationType.mobileWallet,
           name: wallet.name,
-          id: wallet.id,
+          id: wallet.phoneNumber,
         ),
       );
     }
@@ -222,7 +222,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       case LocationType.mobileWallet:
         final updatedWallets = user.mobileWallets.map((wallet) {
-          if (wallet.name == location.name) {
+          if (wallet.phoneNumber == location.id) {
             return MobileWallet(
               name: wallet.name,
               phoneNumber: wallet.phoneNumber,
@@ -312,7 +312,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
