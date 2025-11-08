@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/bank_card.dart';
+import '../models/cash_location.dart';
 import '../models/debt.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
@@ -163,6 +166,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
+  }
+
+  Future<void> _toggleCashLocationVisibility(int index) async {
+    if (_user == null) return;
+
+    final updatedLocations = List<CashLocation>.from(_user!.cashLocations);
+    updatedLocations[index] = updatedLocations[index].copyWith(
+      isHidden: !updatedLocations[index].isHidden,
+    );
+
+    final updatedUser = User(
+      name: _user!.name,
+      cashLocations: updatedLocations,
+      bankCards: _user!.bankCards,
+      mobileWallets: _user!.mobileWallets,
+    );
+
+    await _storageService.saveUserData(updatedUser);
+    _loadUserData();
+  }
+
+  Future<void> _toggleMobileWalletVisibility(int index) async {
+    if (_user == null) return;
+
+    final updatedWallets = List<MobileWallet>.from(_user!.mobileWallets);
+    updatedWallets[index] = updatedWallets[index].copyWith(
+      isHidden: !updatedWallets[index].isHidden,
+    );
+
+    final updatedUser = User(
+      name: _user!.name,
+      cashLocations: _user!.cashLocations,
+      bankCards: _user!.bankCards,
+      mobileWallets: updatedWallets,
+    );
+
+    await _storageService.saveUserData(updatedUser);
+    _loadUserData();
+  }
+
+  Future<void> _toggleBankCardVisibility(int index) async {
+    if (_user == null) return;
+
+    final updatedCards = List<BankCard>.from(_user!.bankCards);
+    updatedCards[index] = updatedCards[index].copyWith(
+      isHidden: !updatedCards[index].isHidden,
+    );
+
+    final updatedUser = User(
+      name: _user!.name,
+      cashLocations: _user!.cashLocations,
+      bankCards: updatedCards,
+      mobileWallets: _user!.mobileWallets,
+    );
+
+    await _storageService.saveUserData(updatedUser);
+    _loadUserData();
   }
 
   @override
@@ -442,17 +502,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   _user!.cashLocations.length,
                       (index) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: _CompactBalanceCard(
-                      title: _user!.cashLocations[index].name,
-                      amount: _user!.cashLocations[index].amount,
-                      icon: Icons.payments_rounded,
-                      color: Colors.green,
+                    child: _CompactCashCard(
+                      location: _user!.cashLocations[index],
+                      onToggleHidden: () => _toggleCashLocationVisibility(index),
                     ),
                   ),
                 ),
               ],
 
-              // Добавляем отображение мобильных кошельков
               if (_user!.mobileWallets.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -471,6 +528,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     child: _CompactMobileWalletCard(
                       wallet: _user!.mobileWallets[index],
                       index: index,
+                      onToggleHidden: () => _toggleMobileWalletVisibility(index),
                     ),
                   ),
                 ),
@@ -494,6 +552,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     child: _CompactBankCard(
                       card: _user!.bankCards[index],
                       index: index,
+                      onToggleHidden: () => _toggleBankCardVisibility(index),
                     ),
                   ),
                 ),
@@ -607,11 +666,96 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
+
+class _CompactCashCard extends StatelessWidget {
+  final CashLocation location;
+  final VoidCallback onToggleHidden;
+
+  const _CompactCashCard({
+    required this.location,
+    required this.onToggleHidden,
+  });
+
+  String _formatCurrency(double amount) {
+    return '${amount.toStringAsFixed(2)} ₽';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.payments_rounded,
+              color: Colors.green,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  location.name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatCurrency(location.amount),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ДОБАВЛЕНО: кнопка скрытия
+          IconButton(
+            onPressed: onToggleHidden,
+            icon: Icon(
+              location.isHidden
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              color: location.isHidden
+                  ? Colors.grey.shade400
+                  : Colors.deepPurple.shade400,
+            ),
+            tooltip: location.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CompactMobileWalletCard extends StatelessWidget {
   final MobileWallet wallet;
   final int index;
+  final VoidCallback onToggleHidden; // ДОБАВЛЕНО
 
-  const _CompactMobileWalletCard({required this.wallet, required this.index});
+  const _CompactMobileWalletCard({
+    required this.wallet,
+    required this.index,
+    required this.onToggleHidden, // ДОБАВЛЕНО
+  });
 
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
@@ -675,71 +819,19 @@ class _CompactMobileWalletCard extends StatelessWidget {
               color: Colors.grey.shade800,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactBalanceCard extends StatelessWidget {
-  final String title;
-  final double amount;
-  final IconData icon;
-  final Color color;
-
-  const _CompactBalanceCard({
-    required this.title,
-    required this.amount,
-    required this.icon,
-    required this.color,
-  });
-
-  String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+          const SizedBox(width: 8),
+          // ДОБАВЛЕНО: кнопка скрытия
+          IconButton(
+            onPressed: onToggleHidden,
+            icon: Icon(
+              wallet.isHidden
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              color: wallet.isHidden
+                  ? Colors.grey.shade400
+                  : Colors.deepPurple.shade400,
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatCurrency(amount),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ],
-            ),
+            tooltip: wallet.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
           ),
         ],
       ),
@@ -750,8 +842,13 @@ class _CompactBalanceCard extends StatelessWidget {
 class _CompactBankCard extends StatelessWidget {
   final BankCard card;
   final int index;
+  final VoidCallback onToggleHidden; // ДОБАВЛЕНО
 
-  const _CompactBankCard({required this.card, required this.index});
+  const _CompactBankCard({
+    required this.card,
+    required this.index,
+    required this.onToggleHidden, // ДОБАВЛЕНО
+  });
 
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
@@ -823,6 +920,20 @@ class _CompactBankCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Colors.grey.shade800,
             ),
+          ),
+          const SizedBox(width: 8),
+          // ДОБАВЛЕНО: кнопка скрытия
+          IconButton(
+            onPressed: onToggleHidden,
+            icon: Icon(
+              card.isHidden
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              color: card.isHidden
+                  ? Colors.grey.shade400
+                  : Colors.deepPurple.shade400,
+            ),
+            tooltip: card.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
           ),
         ],
       ),

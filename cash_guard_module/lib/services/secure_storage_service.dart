@@ -129,6 +129,18 @@ class SecureStorageService {
     await saveTransactions(transactions);
   }
 
+  Future<void> cancelTransaction(String id) async {
+    final transactions = await getTransactions();
+    final index = transactions.indexWhere((t) => t.id == id);
+
+    if (index != -1) {
+      transactions[index] = transactions[index].copyWith(
+        status: TransactionStatus.cancelled,
+      );
+      await saveTransactions(transactions);
+    }
+  }
+
   // ========== РАБОТА С НАЧАЛЬНЫМ БАЛАНСОМ ==========
 
   Future<void> saveInitialBalance(double balance) async {

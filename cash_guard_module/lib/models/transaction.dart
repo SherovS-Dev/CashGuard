@@ -1,19 +1,24 @@
 enum TransactionType {
   income,
   expense,
-  transfer, // Новый тип - перевод между счетами
+  transfer,
+}
+
+enum TransactionStatus {
+  active,    // Активная транзакция
+  cancelled, // Отмененная транзакция
 }
 
 enum LocationType {
   cash,
   card,
-  mobileWallet, // Мобильный кошелек банка
+  mobileWallet,
 }
 
 class TransactionLocation {
   final LocationType type;
-  final String name; // Название (например: "Наличные в кошельке", "Сбербанк *1234", "Сбер Pay")
-  final String? id; // ID для карты (последние 4 цифры) или уникальный ID для наличных/кошельков
+  final String name;
+  final String? id;
 
   TransactionLocation({
     required this.type,
@@ -40,7 +45,7 @@ class TransactionLocation {
     } else if (typeString == 'LocationType.mobileWallet') {
       type = LocationType.mobileWallet;
     } else {
-      type = LocationType.cash; // fallback
+      type = LocationType.cash;
     }
 
     return TransactionLocation(
@@ -57,8 +62,9 @@ class Transaction {
   final double amount;
   final TransactionType type;
   final DateTime date;
-  final TransactionLocation location; // Источник для расходов/переводов, назначение для доходов
-  final TransactionLocation? transferTo; // Куда переводим (только для переводов)
+  final TransactionLocation location;
+  final TransactionLocation? transferTo;
+  final TransactionStatus status; // ДОБАВЛЕНО
 
   Transaction({
     required this.id,
@@ -68,7 +74,17 @@ class Transaction {
     required this.date,
     required this.location,
     this.transferTo,
+    this.status = TransactionStatus.active, // ДОБАВЛЕНО
   });
+
+  bool get canBeCancelled {
+    if (status == TransactionStatus.cancelled) return false;
+
+    final now = DateTime.now();
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    return now.isBefore(endOfDay) || now.isAtSameMomentAs(endOfDay);
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -79,6 +95,7 @@ class Transaction {
       'date': date.toIso8601String(),
       'location': location.toJson(),
       'transferTo': transferTo?.toJson(),
+      'status': status.toString(), // ДОБАВЛЕНО
     };
   }
 
@@ -97,6 +114,36 @@ class Transaction {
       transferTo: json['transferTo'] != null
           ? TransactionLocation.fromJson(json['transferTo'])
           : null,
+      status: _parseStatus(json['status']), // ДОБАВЛЕНО
+    );
+  }
+
+  static TransactionStatus _parseStatus(String? status) {
+    if (status == 'TransactionStatus.cancelled') {
+      return TransactionStatus.cancelled;
+    }
+    return TransactionStatus.active;
+  }
+
+  Transaction copyWith({
+    String? id,
+    String? description,
+    double? amount,
+    TransactionType? type,
+    DateTime? date,
+    TransactionLocation? location,
+    TransactionLocation? transferTo,
+    TransactionStatus? status,
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      description: description ?? this.description,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      date: date ?? this.date,
+      location: location ?? this.location,
+      transferTo: transferTo ?? this.transferTo,
+      status: status ?? this.status,
     );
   }
 }

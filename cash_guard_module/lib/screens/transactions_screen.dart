@@ -38,13 +38,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   double get _totalIncome {
     return _transactions
-        .where((t) => t.type == TransactionType.income)
+        .where((t) => t.type == TransactionType.income && t.status == TransactionStatus.active)
         .fold(0, (sum, t) => sum + t.amount);
   }
 
   double get _totalExpenses {
     return _transactions
-        .where((t) => t.type == TransactionType.expense)
+        .where((t) => t.type == TransactionType.expense && t.status == TransactionStatus.active)
         .fold(0, (sum, t) => sum + t.amount);
   }
 
@@ -56,6 +56,114 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return '${amount.toStringAsFixed(2)} ₽';
   }
 
+  Future<void> _cancelTransaction(Transaction transaction) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.cancel_outlined, color: Colors.orange.shade700),
+            const SizedBox(width: 12),
+            const Text('Отменить транзакцию?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Вы уверены, что хотите отменить "${transaction.description}"?',
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Баланс будет восстановлен, транзакция останется в истории как отмененная',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Назад'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orange,
+            ),
+            child: const Text('Отменить транзакцию'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldCancel == true) {
+      // Возвращаем баланс обратно
+      final user = await _storageService.getUserData();
+      if (user != null) {
+        User updatedUser = user;
+
+        if (transaction.type == TransactionType.transfer) {
+          // Отменяем перевод
+          updatedUser = _updateBalance(updatedUser, transaction.location, transaction.amount);
+          updatedUser = _updateBalance(updatedUser, transaction.transferTo!, -transaction.amount);
+        } else {
+          // Отменяем доход или расход
+          final amountChange = transaction.type == TransactionType.income
+              ? -transaction.amount
+              : transaction.amount;
+
+          updatedUser = _updateBalance(updatedUser, transaction.location, amountChange);
+        }
+
+        await _storageService.saveUserData(updatedUser);
+      }
+
+      // Меняем статус транзакции на "отменена"
+      await _storageService.cancelTransaction(transaction.id);
+
+      _loadData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Транзакция отменена'),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteTransaction(Transaction transaction) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -65,7 +173,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         ),
         title: Row(
           children: [
-            Icon(Icons.warning_rounded, color: Colors.orange.shade700),
+            Icon(Icons.warning_rounded, color: Colors.red.shade700),
             const SizedBox(width: 12),
             const Text('Удалить транзакцию?'),
           ],
@@ -99,17 +207,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         User updatedUser = user;
 
         if (transaction.type == TransactionType.transfer) {
-          // Отменяем перевод
-          // Возвращаем деньги на источник
           updatedUser = _updateBalance(updatedUser, transaction.location, transaction.amount);
-
-          // Снимаем с получателя
           updatedUser = _updateBalance(updatedUser, transaction.transferTo!, -transaction.amount);
         } else {
-          // Отменяем доход или расход
           final amountChange = transaction.type == TransactionType.income
-              ? -transaction.amount  // Если был доход, вычитаем
-              : transaction.amount;   // Если был расход, возвращаем
+              ? -transaction.amount
+              : transaction.amount;
 
           updatedUser = _updateBalance(updatedUser, transaction.location, amountChange);
         }
@@ -131,6 +234,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               id: loc.id,
               name: loc.name,
               amount: loc.amount + amountChange,
+              isHidden: loc.isHidden,
             );
           }
           return loc;
@@ -144,17 +248,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
 
       case LocationType.card:
-      // ИСПРАВЛЕНО: Парсим уникальный ID для поиска нужной карты
         final parts = location.id?.split('|');
         if (parts == null || parts.length != 2) {
-          return user; // Если ID некорректный, возвращаем без изменений
+          return user;
         }
 
         final cardName = parts[0];
         final last4Digits = parts[1];
 
         final updatedCards = user.bankCards.map((card) {
-          // Проверяем совпадение по имени И последним 4 цифрам
           final cardLast4 = card.cardNumber.substring(card.cardNumber.length - 4);
           if (card.cardName == cardName && cardLast4 == last4Digits) {
             return BankCard(
@@ -162,6 +264,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               cardNumber: card.cardNumber,
               balance: card.balance + amountChange,
               bankName: card.bankName,
+              isHidden: card.isHidden,
             );
           }
           return card;
@@ -175,13 +278,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
 
       case LocationType.mobileWallet:
-      // ИСПРАВЛЕНО: Используем name вместо phoneNumber для совместимости
         final updatedWallets = user.mobileWallets.map((wallet) {
           if (wallet.name == location.name) {
             return MobileWallet(
               name: wallet.name,
               phoneNumber: wallet.phoneNumber,
               balance: wallet.balance + amountChange,
+              isHidden: wallet.isHidden,
             );
           }
           return wallet;
@@ -441,6 +544,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   delegate: SliverChildBuilderDelegate(
                         (context, index) {
                       final transaction = _transactions[index];
+                      // ИЗМЕНЕНО: используем GestureDetector вместо Dismissible для отмененных
+                      if (transaction.status == TransactionStatus.cancelled) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _TransactionCard(
+                            transaction: transaction,
+                            onCancel: null, // Отмененную нельзя отменить снова
+                            onDelete: null, // Отмененную нельзя удалить
+                          ),
+                        );
+                      }
+
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Dismissible(
@@ -448,7 +563,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           direction: DismissDirection.endToStart,
                           confirmDismiss: (_) async {
                             await _deleteTransaction(transaction);
-                            return false; // Не удаляем через Dismissible, делаем вручную
+                            return false;
                           },
                           background: Container(
                             alignment: Alignment.centerRight,
@@ -463,7 +578,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               size: 28,
                             ),
                           ),
-                          child: _TransactionCard(transaction: transaction),
+                          child: _TransactionCard(
+                            transaction: transaction,
+                            onCancel: transaction.canBeCancelled
+                                ? () => _cancelTransaction(transaction)
+                                : null,
+                            onDelete: () => _deleteTransaction(transaction),
+                          ),
                         ),
                       );
                     },
@@ -536,8 +657,14 @@ class _StatCard extends StatelessWidget {
 
 class _TransactionCard extends StatelessWidget {
   final Transaction transaction;
+  final VoidCallback? onCancel;
+  final VoidCallback? onDelete;
 
-  const _TransactionCard({required this.transaction});
+  const _TransactionCard({
+    required this.transaction,
+    this.onCancel,
+    this.onDelete,
+  });
 
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
@@ -561,14 +688,21 @@ class _TransactionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
     final isTransfer = transaction.type == TransactionType.transfer;
-    final color = isTransfer ? Colors.blue : (isIncome ? Colors.green : Colors.red);
+    final isCancelled = transaction.status == TransactionStatus.cancelled;
+
+    final color = isCancelled
+        ? Colors.grey
+        : (isTransfer ? Colors.blue : (isIncome ? Colors.green : Colors.red));
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isCancelled ? Colors.grey.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        border: isCancelled
+            ? Border.all(color: Colors.grey.shade300, width: 2)
+            : null,
+        boxShadow: isCancelled ? null : [
           BoxShadow(
             color: Colors.grey.shade200,
             blurRadius: 8,
@@ -587,9 +721,11 @@ class _TransactionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  isTransfer
+                  isCancelled
+                      ? Icons.cancel_rounded
+                      : (isTransfer
                       ? Icons.swap_horiz_rounded
-                      : (isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded),
+                      : (isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded)),
                   color: color,
                   size: 24,
                 ),
@@ -599,17 +735,42 @@ class _TransactionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      transaction.description,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            transaction.description,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                              color: isCancelled ? Colors.grey.shade600 : null,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isCancelled) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'ОТМЕНЕНА',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
-                    // УБРАЛИ КАТЕГОРИЮ - теперь только дата
                     Text(
                       _formatDateTime(transaction.date),
                       style: TextStyle(
@@ -630,11 +791,15 @@ class _TransactionCard extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: color,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 12),
+
+          // Информация о локациях
           if (isTransfer)
             Column(
               children: [
@@ -644,7 +809,7 @@ class _TransactionCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: isCancelled ? Colors.grey.shade100 : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: Colors.grey.shade200,
@@ -691,10 +856,10 @@ class _TransactionCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: isCancelled ? Colors.grey.shade200 : Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: Colors.blue.shade200,
+                            color: isCancelled ? Colors.grey.shade300 : Colors.blue.shade200,
                             width: 1,
                           ),
                         ),
@@ -704,7 +869,7 @@ class _TransactionCard extends StatelessWidget {
                             Icon(
                               _getLocationIcon(transaction.transferTo!.type),
                               size: 16,
-                              color: Colors.blue.shade700,
+                              color: isCancelled ? Colors.grey.shade600 : Colors.blue.shade700,
                             ),
                             const SizedBox(width: 6),
                             Expanded(
@@ -712,7 +877,7 @@ class _TransactionCard extends StatelessWidget {
                                 transaction.transferTo!.name,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.blue.shade700,
+                                  color: isCancelled ? Colors.grey.shade700 : Colors.blue.shade700,
                                   fontWeight: FontWeight.w600,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -730,7 +895,7 @@ class _TransactionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isCancelled ? Colors.grey.shade100 : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Colors.grey.shade200,
@@ -757,6 +922,49 @@ class _TransactionCard extends StatelessWidget {
                 ],
               ),
             ),
+
+          // ДОБАВЛЕНО: Кнопка отмены (показывается только если можно отменить)
+          if (onCancel != null && !isCancelled) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onCancel,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.cancel_outlined,
+                          color: Colors.orange.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Отменить транзакцию',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

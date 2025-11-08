@@ -5,7 +5,6 @@ import 'services/time_security_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Инициализируем сервис безопасности времени
   final timeSecurityService = TimeSecurityService();
   await timeSecurityService.initialize();
 
