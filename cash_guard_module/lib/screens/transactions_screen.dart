@@ -15,9 +15,12 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   final _storageService = SecureStorageService();
+  final PageController _pageController = PageController(initialPage: 0);
+
   List<Transaction> _transactions = [];
   double _initialBalance = 0;
   bool _isLoading = true;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -25,7 +28,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
+    await _cleanOldTransactions();
+    await _generateMonthlyStats();
+
     final transactions = await _storageService.getTransactions();
     final initialBalance = await _storageService.getInitialBalance();
 
@@ -34,6 +46,137 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       _initialBalance = initialBalance;
       _isLoading = false;
     });
+  }
+
+  Future<void> _cleanOldTransactions() async {
+    final transactions = await _storageService.getTransactions();
+    final now = DateTime.now();
+    final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day - 1);
+
+    final filteredTransactions = transactions.where((t) {
+      return t.date.isAfter(threeMonthsAgo);
+    }).toList();
+
+    if (filteredTransactions.length != transactions.length) {
+      await _storageService.saveTransactions(filteredTransactions);
+    }
+  }
+
+  Future<void> _generateMonthlyStats() async {
+    final now = DateTime.now();
+
+    if (now.day == 1) {
+      final lastMonth = DateTime(now.year, now.month - 1, 1);
+      await _createMonthlySnapshot(lastMonth);
+    }
+
+    if (now.month == 1 && now.day == 1) {
+      final lastYear = DateTime(now.year - 1, 1, 1);
+      await _createYearlySnapshot(lastYear);
+    }
+  }
+
+  Future<void> _createMonthlySnapshot(DateTime month) async {
+    final snapshots = await _storageService.getMonthlySnapshots();
+    final snapshotKey = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+    if (snapshots.containsKey(snapshotKey)) return;
+
+    final transactions = await _storageService.getTransactions();
+    final debts = await _storageService.getDebts();
+    final user = await _storageService.getUserData();
+
+    final monthTransactions = transactions.where((t) {
+      return t.date.year == month.year &&
+          t.date.month == month.month &&
+          t.status == TransactionStatus.active;
+    }).toList();
+
+    final income = monthTransactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final expenses = monthTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final prevMonth = DateTime(month.year, month.month - 1, 1);
+    final prevSnapshotKey = '${prevMonth.year}-${prevMonth.month.toString().padLeft(2, '0')}';
+    final prevSnapshot = snapshots[prevSnapshotKey];
+
+    final startBorrowedDebts = prevSnapshot?['endBorrowedDebts'] ??
+        (user?.getTotalBorrowedDebts(debts) ?? 0);
+    final startLentDebts = prevSnapshot?['endLentDebts'] ??
+        (user?.getTotalLentDebts(debts) ?? 0);
+
+    final endBorrowedDebts = user?.getTotalBorrowedDebts(debts) ?? 0;
+    final endLentDebts = user?.getTotalLentDebts(debts) ?? 0;
+
+    final snapshot = {
+      'month': month.toIso8601String(),
+      'startBalance': prevSnapshot?['endBalance'] ?? _initialBalance,
+      'endBalance': user?.totalBalance ?? 0,
+      'income': income,
+      'expenses': expenses,
+      'transactionCount': monthTransactions.length,
+      'startBorrowedDebts': startBorrowedDebts,
+      'endBorrowedDebts': endBorrowedDebts,
+      'startLentDebts': startLentDebts,
+      'endLentDebts': endLentDebts,
+    };
+
+    await _storageService.saveMonthlySnapshot(snapshotKey, snapshot);
+  }
+
+  Future<void> _createYearlySnapshot(DateTime year) async {
+    final snapshots = await _storageService.getYearlySnapshots();
+    final snapshotKey = year.year.toString();
+
+    if (snapshots.containsKey(snapshotKey)) return;
+
+    final transactions = await _storageService.getTransactions();
+    final debts = await _storageService.getDebts();
+    final user = await _storageService.getUserData();
+
+    final yearTransactions = transactions.where((t) {
+      return t.date.year == year.year &&
+          t.status == TransactionStatus.active;
+    }).toList();
+
+    final income = yearTransactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final expenses = yearTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final prevYear = DateTime(year.year - 1, 1, 1);
+    final prevSnapshotKey = prevYear.year.toString();
+    final prevSnapshot = snapshots[prevSnapshotKey];
+
+    final startBorrowedDebts = prevSnapshot?['endBorrowedDebts'] ??
+        (user?.getTotalBorrowedDebts(debts) ?? 0);
+    final startLentDebts = prevSnapshot?['endLentDebts'] ??
+        (user?.getTotalLentDebts(debts) ?? 0);
+
+    final endBorrowedDebts = user?.getTotalBorrowedDebts(debts) ?? 0;
+    final endLentDebts = user?.getTotalLentDebts(debts) ?? 0;
+
+    final snapshot = {
+      'year': year.toIso8601String(),
+      'startBalance': prevSnapshot?['endBalance'] ?? _initialBalance,
+      'endBalance': user?.totalBalance ?? 0,
+      'income': income,
+      'expenses': expenses,
+      'transactionCount': yearTransactions.length,
+      'startBorrowedDebts': startBorrowedDebts,
+      'endBorrowedDebts': endBorrowedDebts,
+      'startLentDebts': startLentDebts,
+      'endLentDebts': endLentDebts,
+    };
+
+    await _storageService.saveYearlySnapshot(snapshotKey, snapshot);
   }
 
   double get _totalIncome {
@@ -67,7 +210,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           children: [
             Icon(Icons.cancel_outlined, color: Colors.orange.shade700),
             const SizedBox(width: 12),
-            const Text('Отменить транзакцию?'),
+            const Expanded(child: Text('Отменить транзакцию?')), // ИСПРАВЛЕНО
           ],
         ),
         content: Column(
@@ -114,24 +257,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.orange,
             ),
-            child: const Text('Отменить транзакцию'),
+            child: const Text('Отменить'),
           ),
         ],
       ),
     );
 
     if (shouldCancel == true) {
-      // Возвращаем баланс обратно
       final user = await _storageService.getUserData();
       if (user != null) {
         User updatedUser = user;
 
         if (transaction.type == TransactionType.transfer) {
-          // Отменяем перевод
           updatedUser = _updateBalance(updatedUser, transaction.location, transaction.amount);
           updatedUser = _updateBalance(updatedUser, transaction.transferTo!, -transaction.amount);
         } else {
-          // Отменяем доход или расход
           final amountChange = transaction.type == TransactionType.income
               ? -transaction.amount
               : transaction.amount;
@@ -142,7 +282,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         await _storageService.saveUserData(updatedUser);
       }
 
-      // Меняем статус транзакции на "отменена"
       await _storageService.cancelTransaction(transaction.id);
 
       _loadData();
@@ -165,6 +304,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Future<void> _deleteTransaction(Transaction transaction) async {
+    if (transaction.status == TransactionStatus.cancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Отмененные транзакции нельзя удалить'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -175,7 +332,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           children: [
             Icon(Icons.warning_rounded, color: Colors.red.shade700),
             const SizedBox(width: 12),
-            const Text('Удалить транзакцию?'),
+            const Expanded(child: Text('Удалить транзакцию?')), // ИСПРАВЛЕНО
           ],
         ),
         content: Text(
@@ -201,7 +358,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
 
     if (shouldDelete == true) {
-      // Возвращаем баланс обратно
       final user = await _storageService.getUserData();
       if (user != null) {
         User updatedUser = user;
@@ -322,7 +478,317 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
 
     return Scaffold(
-      body: Container(
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (page) {
+          setState(() {
+            _currentPage = page;
+          });
+        },
+        children: [
+          // ИЗМЕНЕНО: Страница текущих транзакций (слева)
+          _buildCurrentTransactionsPage(),
+
+          // ИЗМЕНЕНО: Страница статистики (справа)
+          _StatisticsPage(
+            storageService: _storageService,
+            formatCurrency: _formatCurrency,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentTransactionsPage() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.deepPurple.shade50,
+            Colors.white,
+          ],
+        ),
+      ),
+      child: CustomScrollView(
+        slivers: [
+          // ИСПРАВЛЕНО: App Bar с правильными размерами
+          SliverAppBar(
+            expandedHeight: 220, // УВЕЛИЧЕНО
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.deepPurple.shade400,
+                      Colors.deepPurple.shade700,
+                      Colors.indigo.shade800,
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // ИСПРАВЛЕНО: Компактный заголовок
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Транзакции',
+                                style: TextStyle(
+                                  fontSize: 24, // УМЕНЬШЕНО
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Статистика',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_rounded, // ИЗМЕНЕНО
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    size: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Доходы',
+                                amount: _formatCurrency(_totalIncome),
+                                icon: Icons.arrow_downward_rounded,
+                                color: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Расходы',
+                                amount: _formatCurrency(_totalExpenses),
+                                icon: Icons.arrow_upward_rounded,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(Icons.history_rounded, color: Colors.deepPurple.shade600),
+                  const SizedBox(width: 8),
+                  const Expanded( // ИСПРАВЛЕНО
+                    child: Text(
+                      'История (3 месяца)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_transactions.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(40),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.grey.shade200,
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.receipt_long_rounded,
+                        size: 64,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Нет транзакций',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Добавьте первую транзакцию',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                    final transaction = _transactions[index];
+                    if (transaction.status == TransactionStatus.cancelled) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _TransactionCard(
+                          transaction: transaction,
+                          onCancel: null,
+                          onDelete: null,
+                        ),
+                      );
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Dismissible(
+                        key: Key(transaction.id),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) async {
+                          await _deleteTransaction(transaction);
+                          return false;
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade400,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.delete_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        child: _TransactionCard(
+                          transaction: transaction,
+                          onCancel: transaction.canBeCancelled
+                              ? () => _cancelTransaction(transaction)
+                              : null,
+                          onDelete: () => _deleteTransaction(transaction),
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: _transactions.length,
+                ),
+              ),
+            ),
+
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 100),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatisticsPage extends StatefulWidget {
+  final SecureStorageService storageService;
+  final String Function(double) formatCurrency;
+
+  const _StatisticsPage({
+    required this.storageService,
+    required this.formatCurrency,
+  });
+
+  @override
+  State<_StatisticsPage> createState() => _StatisticsPageState();
+}
+
+class _StatisticsPageState extends State<_StatisticsPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  Map<String, dynamic> _monthlySnapshots = {};
+  Map<String, dynamic> _yearlySnapshots = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadSnapshots();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSnapshots() async {
+    final monthly = await widget.storageService.getMonthlySnapshots();
+    final yearly = await widget.storageService.getYearlySnapshots();
+
+    setState(() {
+      _monthlySnapshots = monthly;
+      _yearlySnapshots = yearly;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -333,271 +799,503 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ],
           ),
         ),
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            SliverAppBar(
-              expandedHeight: 280,
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.deepPurple.shade400,
-                        Colors.deepPurple.shade700,
-                        Colors.indigo.shade800,
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Финансовая статистика',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Доходы',
-                                  amount: _formatCurrency(_totalIncome),
-                                  icon: Icons.arrow_downward_rounded,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Расходы',
-                                  amount: _formatCurrency(_totalExpenses),
-                                  icon: Icons.arrow_upward_rounded,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
-            // Summary Card
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.deepPurple.shade500,
-                            Colors.deepPurple.shade700,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.deepPurple.shade200.withValues(alpha: 0.5),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Начальный баланс',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                              Text(
-                                _formatCurrency(_initialBalance),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(color: Colors.white24, height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Текущий баланс',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                _formatCurrency(_currentBalance),
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Icon(Icons.history_rounded, color: Colors.deepPurple.shade600),
-                        const SizedBox(width: 8),
-                        Text(
-                          'История транзакций',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.deepPurple.shade50,
+            Colors.white,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.deepPurple.shade400,
+                    Colors.deepPurple.shade700,
                   ],
                 ),
               ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Статистика',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Транзакции',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.swipe_right_rounded,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: Colors.white,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white60,
+                    tabs: const [
+                      Tab(text: 'По месяцам'),
+                      Tab(text: 'По годам'),
+                    ],
+                  ),
+                ],
+              ),
             ),
 
-            // Transactions List
-            if (_transactions.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(40),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.grey.shade200,
-                        width: 2,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.receipt_long_rounded,
-                          size: 64,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Нет транзакций',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Добавьте первую транзакцию',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                      final transaction = _transactions[index];
-                      // ИЗМЕНЕНО: используем GestureDetector вместо Dismissible для отмененных
-                      if (transaction.status == TransactionStatus.cancelled) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _TransactionCard(
-                            transaction: transaction,
-                            onCancel: null, // Отмененную нельзя отменить снова
-                            onDelete: null, // Отмененную нельзя удалить
-                          ),
-                        );
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Dismissible(
-                          key: Key(transaction.id),
-                          direction: DismissDirection.endToStart,
-                          confirmDismiss: (_) async {
-                            await _deleteTransaction(transaction);
-                            return false;
-                          },
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade400,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.delete_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                          child: _TransactionCard(
-                            transaction: transaction,
-                            onCancel: transaction.canBeCancelled
-                                ? () => _cancelTransaction(transaction)
-                                : null,
-                            onDelete: () => _deleteTransaction(transaction),
-                          ),
-                        ),
-                      );
-                    },
-                    childCount: _transactions.length,
-                  ),
-                ),
+            // Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildMonthlyStats(),
+                  _buildYearlyStats(),
+                ],
               ),
-
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlyStats() {
+    if (_monthlySnapshots.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_month_rounded,
+                size: 64,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Нет месячной статистики',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Статистика создается автоматически\nв начале каждого месяца',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final sortedKeys = _monthlySnapshots.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final key = sortedKeys[index];
+        final snapshot = _monthlySnapshots[key] as Map<String, dynamic>;
+        final date = DateTime.parse(snapshot['month']);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _SnapshotCard(
+            title: '${_getMonthName(date.month)} ${date.year}',
+            snapshot: snapshot,
+            formatCurrency: widget.formatCurrency,
+            isMonthly: true,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildYearlyStats() {
+    if (_yearlySnapshots.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 64,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Нет годовой статистики',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Статистика создается автоматически\n1 января каждого года',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final sortedKeys = _yearlySnapshots.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final key = sortedKeys[index];
+        final snapshot = _yearlySnapshots[key] as Map<String, dynamic>;
+        final date = DateTime.parse(snapshot['year']);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _SnapshotCard(
+            title: '${date.year} год',
+            snapshot: snapshot,
+            formatCurrency: widget.formatCurrency,
+            isMonthly: false,
+          ),
+        );
+      },
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    return months[month - 1];
+  }
+}
+
+class _SnapshotCard extends StatelessWidget {
+  final String title;
+  final Map<String, dynamic> snapshot;
+  final String Function(double) formatCurrency;
+  final bool isMonthly;
+
+  const _SnapshotCard({
+    required this.title,
+    required this.snapshot,
+    required this.formatCurrency,
+    required this.isMonthly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final startBalance = (snapshot['startBalance'] ?? 0).toDouble();
+    final endBalance = (snapshot['endBalance'] ?? 0).toDouble();
+    final income = (snapshot['income'] ?? 0).toDouble();
+    final expenses = (snapshot['expenses'] ?? 0).toDouble();
+    final transactionCount = snapshot['transactionCount'] ?? 0;
+
+    final startBorrowedDebts = (snapshot['startBorrowedDebts'] ?? 0).toDouble();
+    final endBorrowedDebts = (snapshot['endBorrowedDebts'] ?? 0).toDouble();
+    final startLentDebts = (snapshot['startLentDebts'] ?? 0).toDouble();
+    final endLentDebts = (snapshot['endLentDebts'] ?? 0).toDouble();
+
+    final balanceChange = endBalance - startBalance;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.deepPurple.shade400,
+                  Colors.deepPurple.shade600,
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$transactionCount ${isMonthly ? "транзакций" : "транзакций за год"}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Баланс
+                _InfoRow(
+                  label: 'Баланс в начале',
+                  value: formatCurrency(startBalance),
+                  valueColor: Colors.grey.shade700,
+                ),
+                const SizedBox(height: 12),
+                _InfoRow(
+                  label: 'Баланс в конце',
+                  value: formatCurrency(endBalance),
+                  valueColor: Colors.deepPurple.shade700,
+                ),
+                const SizedBox(height: 12),
+                _InfoRow(
+                  label: 'Изменение',
+                  value: '${balanceChange >= 0 ? "+" : ""}${formatCurrency(balanceChange)}',
+                  valueColor: balanceChange >= 0 ? Colors.green : Colors.red,
+                ),
+
+                const Divider(height: 32),
+
+                // Доходы и расходы
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MiniStatCard(
+                        label: 'Доходы',
+                        value: formatCurrency(income),
+                        color: Colors.green,
+                        icon: Icons.arrow_downward_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _MiniStatCard(
+                        label: 'Расходы',
+                        value: formatCurrency(expenses),
+                        color: Colors.red,
+                        icon: Icons.arrow_upward_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Divider(height: 32),
+
+                // Долги
+                const Text(
+                  'Долги',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Мне должны
+                _InfoRow(
+                  label: 'Мне должны (начало)',
+                  value: formatCurrency(startBorrowedDebts),
+                  valueColor: Colors.grey.shade600,
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  label: 'Мне должны (конец)',
+                  value: formatCurrency(endBorrowedDebts),
+                  valueColor: Colors.green.shade700,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Я должен
+                _InfoRow(
+                  label: 'Я должен (начало)',
+                  value: formatCurrency(startLentDebts),
+                  valueColor: Colors.grey.shade600,
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  label: 'Я должен (конец)',
+                  value: formatCurrency(endLentDebts),
+                  valueColor: Colors.red.shade700,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniStatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _MiniStatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -635,9 +1333,9 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.white70,
             ),
           ),
           const SizedBox(height: 4),
@@ -799,7 +1497,6 @@ class _TransactionCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Информация о локациях
           if (isTransfer)
             Column(
               children: [
@@ -923,7 +1620,6 @@ class _TransactionCard extends StatelessWidget {
               ),
             ),
 
-          // ДОБАВЛЕНО: Кнопка отмены (показывается только если можно отменить)
           if (onCancel != null && !isCancelled) ...[
             const SizedBox(height: 12),
             Container(

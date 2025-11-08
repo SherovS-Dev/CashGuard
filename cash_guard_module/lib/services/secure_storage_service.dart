@@ -193,6 +193,40 @@ class SecureStorageService {
     await saveDebts(debts);
   }
 
+  // ========== РАБОТА СО СНИМКАМИ СТАТИСТИКИ ==========
+
+  // Месячные снимки
+  Future<Map<String, dynamic>> getMonthlySnapshots() async {
+    final jsonString = await _secureStorage.read(key: 'monthly_snapshots');
+    if (jsonString == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(jsonString));
+  }
+
+  Future<void> saveMonthlySnapshot(String key, Map<String, dynamic> snapshot) async {
+    final snapshots = await getMonthlySnapshots();
+    snapshots[key] = snapshot;
+    await _secureStorage.write(
+      key: 'monthly_snapshots',
+      value: jsonEncode(snapshots),
+    );
+  }
+
+  // Годовые снимки
+  Future<Map<String, dynamic>> getYearlySnapshots() async {
+    final jsonString = await _secureStorage.read(key: 'yearly_snapshots');
+    if (jsonString == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(jsonString));
+  }
+
+  Future<void> saveYearlySnapshot(String key, Map<String, dynamic> snapshot) async {
+    final snapshots = await getYearlySnapshots();
+    snapshots[key] = snapshot;
+    await _secureStorage.write(
+      key: 'yearly_snapshots',
+      value: jsonEncode(snapshots),
+    );
+  }
+
   // ========== ОЧИСТКА ВСЕХ ДАННЫХ ==========
 
   Future<void> clearAllData() async {
