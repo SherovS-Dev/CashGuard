@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
@@ -20,7 +21,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Transaction> _transactions = [];
   double _initialBalance = 0;
   bool _isLoading = true;
-  int _currentPage = 0;
 
   @override
   void initState() {
@@ -191,10 +191,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         .fold(0, (sum, t) => sum + t.amount);
   }
 
-  double get _currentBalance {
-    return _initialBalance + _totalIncome - _totalExpenses;
-  }
-
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
   }
@@ -210,7 +206,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           children: [
             Icon(Icons.cancel_outlined, color: Colors.orange.shade700),
             const SizedBox(width: 12),
-            const Expanded(child: Text('Отменить транзакцию?')), // ИСПРАВЛЕНО
+            const Expanded(child: Text('Отменить транзакцию?')),
           ],
         ),
         content: Column(
@@ -481,15 +477,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       body: PageView(
         controller: _pageController,
         onPageChanged: (page) {
-          setState(() {
-            _currentPage = page;
-          });
+          setState(() {});
         },
         children: [
-          // ИЗМЕНЕНО: Страница текущих транзакций (слева)
           _buildCurrentTransactionsPage(),
 
-          // ИЗМЕНЕНО: Страница статистики (справа)
           _StatisticsPage(
             storageService: _storageService,
             formatCurrency: _formatCurrency,
@@ -513,9 +505,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       child: CustomScrollView(
         slivers: [
-          // ИСПРАВЛЕНО: App Bar с правильными размерами
           SliverAppBar(
-            expandedHeight: 220, // УВЕЛИЧЕНО
+            expandedHeight: 220,
             floating: false,
             pinned: true,
             backgroundColor: Colors.transparent,
@@ -534,20 +525,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 ),
                 child: SafeArea(
+                  bottom: true,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        // ИСПРАВЛЕНО: Компактный заголовок
                         Row(
                           children: [
                             const Expanded(
                               child: Text(
                                 'Транзакции',
                                 style: TextStyle(
-                                  fontSize: 24, // УМЕНЬШЕНО
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -805,103 +796,152 @@ class _StatisticsPageState extends State<_StatisticsPage> with SingleTickerProvi
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.deepPurple.shade50,
-            Colors.white,
-          ],
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.deepPurple.shade400,
-                    Colors.deepPurple.shade700,
-                  ],
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.deepPurple.shade50,
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: true,
+          child: Column(
+            children: [
+              // Header with gradient background
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.deepPurple.shade400,
+                      Colors.deepPurple.shade700,
+                      Colors.indigo.shade800,
+                    ],
+                  ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Статистика',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      children: [
+                        // Title and button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Транзакции',
+                            const Text(
+                              'Статистика',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.swipe_right_rounded,
-                              color: Colors.white.withValues(alpha: 0.9),
-                              size: 16,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.arrow_back_rounded,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Транзакции',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        // Modern TabBar
+                        Container(
+                          height: 45,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TabBar(
+                            controller: _tabController,
+                            indicator: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            labelColor: Colors.deepPurple.shade700,
+                            unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+                            labelStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
+                            unselectedLabelStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                            splashFactory: NoSplash.splashFactory,
+                            overlayColor: WidgetStateProperty.all(Colors.transparent),
+                            tabs: const [
+                              Tab(text: 'По месяцам'),
+                              Tab(text: 'По годам'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  TabBar(
-                    controller: _tabController,
-                    indicatorColor: Colors.white,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white60,
-                    tabs: const [
-                      Tab(text: 'По месяцам'),
-                      Tab(text: 'По годам'),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
 
-            // Content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildMonthlyStats(),
-                  _buildYearlyStats(),
-                ],
+              // Content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMonthlyStats(),
+                    _buildYearlyStats(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
