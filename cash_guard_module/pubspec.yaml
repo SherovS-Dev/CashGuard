@@ -24,6 +24,9 @@ dependencies:
   share_plus: ^7.2.1
   file_picker: ^10.3.3
 
+  # Защита от скриншотов и записи экрана
+  screen_protector: ^1.4.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
