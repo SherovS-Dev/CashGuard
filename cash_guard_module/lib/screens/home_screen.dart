@@ -224,63 +224,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return '${amount.toStringAsFixed(2)} ₽';
   }
 
-  Future<void> _toggleCashLocationVisibility(int index) async {
-    if (_user == null) return;
-
-    final updatedLocations = List<CashLocation>.from(_user!.cashLocations);
-    updatedLocations[index] = updatedLocations[index].copyWith(
-      isHidden: !updatedLocations[index].isHidden,
-    );
-
-    final updatedUser = User(
-      name: _user!.name,
-      cashLocations: updatedLocations,
-      bankCards: _user!.bankCards,
-      mobileWallets: _user!.mobileWallets,
-    );
-
-    await _storageService.saveUserData(updatedUser);
-    _loadUserData();
-  }
-
-  Future<void> _toggleMobileWalletVisibility(int index) async {
-    if (_user == null) return;
-
-    final updatedWallets = List<MobileWallet>.from(_user!.mobileWallets);
-    updatedWallets[index] = updatedWallets[index].copyWith(
-      isHidden: !updatedWallets[index].isHidden,
-    );
-
-    final updatedUser = User(
-      name: _user!.name,
-      cashLocations: _user!.cashLocations,
-      bankCards: _user!.bankCards,
-      mobileWallets: updatedWallets,
-    );
-
-    await _storageService.saveUserData(updatedUser);
-    _loadUserData();
-  }
-
-  Future<void> _toggleBankCardVisibility(int index) async {
-    if (_user == null) return;
-
-    final updatedCards = List<BankCard>.from(_user!.bankCards);
-    updatedCards[index] = updatedCards[index].copyWith(
-      isHidden: !updatedCards[index].isHidden,
-    );
-
-    final updatedUser = User(
-      name: _user!.name,
-      cashLocations: _user!.cashLocations,
-      bankCards: updatedCards,
-      mobileWallets: _user!.mobileWallets,
-    );
-
-    await _storageService.saveUserData(updatedUser);
-    _loadUserData();
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -584,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _CompactCashCard(
                         location: entry.value,
-                        onToggleHidden: () => _toggleCashLocationVisibility(entry.key),
+                        index: entry.key,
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
                     )).toList(),
@@ -608,7 +551,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: _CompactMobileWalletCard(
                         wallet: entry.value,
                         index: entry.key,
-                        onToggleHidden: () => _toggleMobileWalletVisibility(entry.key),
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
                     )).toList(),
@@ -632,7 +574,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: _CompactBankCard(
                         card: entry.value,
                         index: entry.key,
-                        onToggleHidden: () => _toggleBankCardVisibility(entry.key),
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
                     )).toList(),
@@ -749,46 +690,68 @@ class _QuickActionButton extends StatelessWidget {
 
 class _CompactCashCard extends StatelessWidget {
   final CashLocation location;
-  final VoidCallback onToggleHidden;
   final bool isTemporarilyVisible;
+  final int index;
 
   const _CompactCashCard({
     required this.location,
-    required this.onToggleHidden,
     this.isTemporarilyVisible = false,
+    required this.index,
   });
 
   String _formatCurrency(double amount) {
     return '${amount.toStringAsFixed(2)} ₽';
   }
 
+  List<List<Color>> _getGradientColors() {
+    return [
+      [Colors.green.shade400, Colors.green.shade600],
+      [Colors.teal.shade400, Colors.teal.shade600],
+      [const Color(0xFF9CCC65), const Color(0xFF689F38)],
+      [const Color(0xFF66BB6A), const Color(0xFF43A047)],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colors = _getGradientColors()[index % _getGradientColors().length];
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isTemporarilyVisible
-            ? Colors.orange.shade50.withValues(alpha: 0.3)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isTemporarilyVisible
-              ? Colors.orange.shade300
-              : Colors.grey.shade200,
-          width: isTemporarilyVisible ? 2 : 1,
-        ),
+        gradient: isTemporarilyVisible
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.orange.shade400, Colors.orange.shade600],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isTemporarilyVisible
+                ? Colors.orange.shade300.withValues(alpha: 0.5)
+                : colors[0].withValues(alpha: 0.5),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.payments_rounded,
-              color: Colors.green,
+              color: Colors.white,
               size: 24,
             ),
           ),
@@ -799,35 +762,22 @@ class _CompactCashCard extends StatelessWidget {
               children: [
                 Text(
                   location.name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatCurrency(location.amount),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
               ],
             ),
           ),
-          // ДОБАВЛЕНО: кнопка скрытия
-          IconButton(
-            onPressed: onToggleHidden,
-            icon: Icon(
-              location.isHidden
-                  ? Icons.visibility_off_rounded
-                  : Icons.visibility_rounded,
-              color: location.isHidden
-                  ? Colors.grey.shade400
-                  : Colors.deepPurple.shade400,
+          Text(
+            _formatCurrency(location.amount),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            tooltip: location.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
           ),
         ],
       ),
@@ -838,13 +788,11 @@ class _CompactCashCard extends StatelessWidget {
 class _CompactMobileWalletCard extends StatelessWidget {
   final MobileWallet wallet;
   final int index;
-  final VoidCallback onToggleHidden;
   final bool isTemporarilyVisible;
 
   const _CompactMobileWalletCard({
     required this.wallet,
     required this.index,
-    required this.onToggleHidden,
     this.isTemporarilyVisible = false,
   });
 
@@ -852,45 +800,55 @@ class _CompactMobileWalletCard extends StatelessWidget {
     return '${amount.toStringAsFixed(2)} ₽';
   }
 
-  Color _getWalletColor(int index) {
-    final colors = [
-      Colors.purple,
-      Colors.indigo,
-      Colors.cyan,
-      Colors.amber,
+  List<List<Color>> _getGradientColors() {
+    return [
+      [const Color(0xFF11998e), const Color(0xFF38ef7d)],
+      [const Color(0xFF2193b0), const Color(0xFF6dd5ed)],
+      [const Color(0xFFee0979), const Color(0xFFff6a00)],
+      [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],
     ];
-    return colors[index % colors.length];
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _getWalletColor(index);
+    final colors = _getGradientColors()[index % _getGradientColors().length];
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isTemporarilyVisible
-            ? Colors.orange.shade50.withValues(alpha: 0.3)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isTemporarilyVisible
-              ? Colors.orange.shade300
-              : Colors.grey.shade200,
-          width: isTemporarilyVisible ? 2 : 1,
-        ),
+        gradient: isTemporarilyVisible
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.orange.shade400, Colors.orange.shade600],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isTemporarilyVisible
+                ? Colors.orange.shade300.withValues(alpha: 0.5)
+                : colors[0].withValues(alpha: 0.5),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.phone_android_rounded,
-              color: color,
+              color: Colors.white,
               size: 24,
             ),
           ),
@@ -904,6 +862,7 @@ class _CompactMobileWalletCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -911,25 +870,11 @@ class _CompactMobileWalletCard extends StatelessWidget {
           ),
           Text(
             _formatCurrency(wallet.balance),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.white,
             ),
-          ),
-          const SizedBox(width: 8),
-          // ДОБАВЛЕНО: кнопка скрытия
-          IconButton(
-            onPressed: onToggleHidden,
-            icon: Icon(
-              wallet.isHidden
-                  ? Icons.visibility_off_rounded
-                  : Icons.visibility_rounded,
-              color: wallet.isHidden
-                  ? Colors.grey.shade400
-                  : Colors.deepPurple.shade400,
-            ),
-            tooltip: wallet.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
           ),
         ],
       ),
@@ -940,13 +885,11 @@ class _CompactMobileWalletCard extends StatelessWidget {
 class _CompactBankCard extends StatelessWidget {
   final BankCard card;
   final int index;
-  final VoidCallback onToggleHidden;
   final bool isTemporarilyVisible;
 
   const _CompactBankCard({
     required this.card,
     required this.index,
-    required this.onToggleHidden,
     this.isTemporarilyVisible = false,
   });
 
@@ -954,46 +897,56 @@ class _CompactBankCard extends StatelessWidget {
     return '${amount.toStringAsFixed(2)} ₽';
   }
 
-  Color _getCardColor(int index) {
-    final colors = [
-      Colors.blue,
-      Colors.purple,
-      Colors.orange,
-      Colors.teal,
-      Colors.pink,
+  List<List<Color>> _getGradientColors() {
+    return [
+      [const Color(0xFF667eea), const Color(0xFF764ba2)],
+      [const Color(0xFFf093fb), const Color(0xFFf5576c)],
+      [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
+      [const Color(0xFF43e97b), const Color(0xFF38f9d7)],
+      [const Color(0xFFfa709a), const Color(0xFFfee140)],
     ];
-    return colors[index % colors.length];
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _getCardColor(index);
+    final colors = _getGradientColors()[index % _getGradientColors().length];
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isTemporarilyVisible
-            ? Colors.orange.shade50.withValues(alpha: 0.3)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isTemporarilyVisible
-              ? Colors.orange.shade300
-              : Colors.grey.shade200,
-          width: isTemporarilyVisible ? 2 : 1,
-        ),
+        gradient: isTemporarilyVisible
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.orange.shade400, Colors.orange.shade600],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isTemporarilyVisible
+                ? Colors.orange.shade300.withValues(alpha: 0.5)
+                : colors[0].withValues(alpha: 0.5),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.credit_card_rounded,
-              color: color,
+              color: Colors.white,
               size: 24,
             ),
           ),
@@ -1007,14 +960,15 @@ class _CompactBankCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   card.maskedCardNumber,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: Colors.white70,
                   ),
                 ),
               ],
@@ -1022,25 +976,11 @@ class _CompactBankCard extends StatelessWidget {
           ),
           Text(
             _formatCurrency(card.balance),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.white,
             ),
-          ),
-          const SizedBox(width: 8),
-          // ДОБАВЛЕНО: кнопка скрытия
-          IconButton(
-            onPressed: onToggleHidden,
-            icon: Icon(
-              card.isHidden
-                  ? Icons.visibility_off_rounded
-                  : Icons.visibility_rounded,
-              color: card.isHidden
-                  ? Colors.grey.shade400
-                  : Colors.deepPurple.shade400,
-            ),
-            tooltip: card.isHidden ? 'Показать в балансе' : 'Скрыть из баланса',
           ),
         ],
       ),

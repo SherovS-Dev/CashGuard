@@ -71,6 +71,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
               final locInput = CashLocationInput();
               locInput.nameController.text = location.name;
               locInput.amountController.text = location.amount.toString();
+              locInput.isHidden = location.isHidden;
               _cashLocations.add(locInput);
             }
           }
@@ -83,6 +84,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           cardInput.numberController.text = card.cardNumber;
           cardInput.balanceController.text = card.balance.toString();
           cardInput.bankController.text = card.bankName ?? '';
+          cardInput.isHidden = card.isHidden;
           _bankCards.add(cardInput);
         }
 
@@ -92,6 +94,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           walletInput.nameController.text = wallet.name;
           walletInput.phoneController.text = wallet.phoneNumber;
           walletInput.balanceController.text = wallet.balance.toString();
+          walletInput.isHidden = wallet.isHidden;
           _mobileWallets.add(walletInput);
         }
       });
@@ -335,6 +338,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         id: 'cash_location_$i',
         name: location.nameController.text.trim(),
         amount: double.tryParse(location.amountController.text) ?? 0,
+        isHidden: location.isHidden,
       ));
     }
 
@@ -347,6 +351,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         bankName: input.bankController.text.trim().isEmpty
             ? null
             : input.bankController.text.trim(),
+        isHidden: input.isHidden,
       );
     }).toList();
 
@@ -356,6 +361,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         name: input.nameController.text.trim(),
         phoneNumber: input.phoneController.text.trim(),
         balance: double.tryParse(input.balanceController.text) ?? 0,
+        isHidden: input.isHidden,
       );
     }).toList();
 
@@ -1351,6 +1357,7 @@ class _ModernTextField extends StatelessWidget {
 class CashLocationInput {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
+  bool isHidden = false;
 
   void dispose() {
     nameController.dispose();
@@ -1358,7 +1365,7 @@ class CashLocationInput {
   }
 }
 
-class _CashLocationForm extends StatelessWidget {
+class _CashLocationForm extends StatefulWidget {
   final CashLocationInput locationInput;
   final VoidCallback onRemove;
   final int index;
@@ -1368,6 +1375,12 @@ class _CashLocationForm extends StatelessWidget {
     required this.onRemove,
     required this.index,
   });
+
+  @override
+  State<_CashLocationForm> createState() => _CashLocationFormState();
+}
+
+class _CashLocationFormState extends State<_CashLocationForm> {
 
   List<IconData> _getLocationIcons() {
     return [
@@ -1381,11 +1394,11 @@ class _CashLocationForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = locationInput.nameController.text.isEmpty
-        ? 'Место ${index + 1}'
-        : locationInput.nameController.text;
-    final amount = double.tryParse(locationInput.amountController.text) ?? 0.0;
-    final icon = _getLocationIcons()[index % _getLocationIcons().length];
+    final name = widget.locationInput.nameController.text.isEmpty
+        ? 'Место ${widget.index + 1}'
+        : widget.locationInput.nameController.text;
+    final amount = double.tryParse(widget.locationInput.amountController.text) ?? 0.0;
+    final icon = _getLocationIcons()[widget.index % _getLocationIcons().length];
 
     return GestureDetector(
       onTap: () => _showEditDialog(context),
@@ -1431,6 +1444,25 @@ class _CashLocationForm extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
+                      onPressed: () {
+                        setState(() {
+                          widget.locationInput.isHidden = !widget.locationInput.isHidden;
+                        });
+                      },
+                      icon: Icon(
+                        widget.locationInput.isHidden
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: Colors.white.withValues(
+                          alpha: widget.locationInput.isHidden ? 0.4 : 0.7,
+                        ),
+                        size: 20,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       onPressed: () => _showEditDialog(context),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
@@ -1438,7 +1470,7 @@ class _CashLocationForm extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: onRemove,
+                      onPressed: widget.onRemove,
                       icon: const Icon(Icons.delete_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1490,7 +1522,7 @@ class _CashLocationForm extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
-              controller: locationInput.nameController,
+              controller: widget.locationInput.nameController,
               decoration: const InputDecoration(
                 labelText: 'Название места',
                 hintText: 'Например: В сейфе',
@@ -1499,7 +1531,7 @@ class _CashLocationForm extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextFormField(
-              controller: locationInput.amountController,
+              controller: widget.locationInput.amountController,
               decoration: const InputDecoration(
                 labelText: 'Сумма',
                 hintText: '0.00',
@@ -1533,6 +1565,7 @@ class BankCardInput {
   final TextEditingController numberController = TextEditingController();
   final TextEditingController balanceController = TextEditingController();
   final TextEditingController bankController = TextEditingController();
+  bool isHidden = false;
 
   void dispose() {
     nameController.dispose();
@@ -1546,6 +1579,7 @@ class MobileWalletInput {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController balanceController = TextEditingController();
+  bool isHidden = false;
 
   void dispose() {
     nameController.dispose();
@@ -1554,7 +1588,7 @@ class MobileWalletInput {
   }
 }
 
-class _ModernBankCardForm extends StatelessWidget {
+class _ModernBankCardForm extends StatefulWidget {
   final BankCardInput cardInput;
   final VoidCallback onRemove;
   final int index;
@@ -1564,6 +1598,12 @@ class _ModernBankCardForm extends StatelessWidget {
     required this.onRemove,
     required this.index,
   });
+
+  @override
+  State<_ModernBankCardForm> createState() => _ModernBankCardFormState();
+}
+
+class _ModernBankCardFormState extends State<_ModernBankCardForm> {
 
   List<List<Color>> _getCardGradients() {
     return [
@@ -1577,17 +1617,17 @@ class _ModernBankCardForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getCardGradients()[index % _getCardGradients().length];
-    final cardName = cardInput.nameController.text.isEmpty
-        ? 'Карта ${index + 1}'
-        : cardInput.nameController.text;
-    final cardNumber = cardInput.numberController.text.isEmpty
+    final colors = _getCardGradients()[widget.index % _getCardGradients().length];
+    final cardName = widget.cardInput.nameController.text.isEmpty
+        ? 'Карта ${widget.index + 1}'
+        : widget.cardInput.nameController.text;
+    final cardNumber = widget.cardInput.numberController.text.isEmpty
         ? '••••'
-        : cardInput.numberController.text;
-    final bankName = cardInput.bankController.text.isEmpty
+        : widget.cardInput.numberController.text;
+    final bankName = widget.cardInput.bankController.text.isEmpty
         ? 'Банк'
-        : cardInput.bankController.text;
-    final balance = double.tryParse(cardInput.balanceController.text) ?? 0.0;
+        : widget.cardInput.bankController.text;
+    final balance = double.tryParse(widget.cardInput.balanceController.text) ?? 0.0;
 
     return GestureDetector(
       onTap: () => _showEditDialog(context),
@@ -1633,6 +1673,25 @@ class _ModernBankCardForm extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
+                      onPressed: () {
+                        setState(() {
+                          widget.cardInput.isHidden = !widget.cardInput.isHidden;
+                        });
+                      },
+                      icon: Icon(
+                        widget.cardInput.isHidden
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: Colors.white.withValues(
+                          alpha: widget.cardInput.isHidden ? 0.4 : 0.7,
+                        ),
+                        size: 20,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       onPressed: () => _showEditDialog(context),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
@@ -1640,7 +1699,7 @@ class _ModernBankCardForm extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: onRemove,
+                      onPressed: widget.onRemove,
                       icon: const Icon(Icons.delete_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1717,7 +1776,7 @@ class _ModernBankCardForm extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                controller: cardInput.nameController,
+                controller: widget.cardInput.nameController,
                 decoration: const InputDecoration(
                   labelText: 'Название карты',
                   hintText: 'Например: Основная карта',
@@ -1726,7 +1785,7 @@ class _ModernBankCardForm extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: cardInput.bankController,
+                controller: widget.cardInput.bankController,
                 decoration: const InputDecoration(
                   labelText: 'Банк',
                   hintText: 'Например: Сбербанк',
@@ -1735,7 +1794,7 @@ class _ModernBankCardForm extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: cardInput.numberController,
+                controller: widget.cardInput.numberController,
                 decoration: const InputDecoration(
                   labelText: 'Последние 4 цифры',
                   hintText: '1234',
@@ -1749,7 +1808,7 @@ class _ModernBankCardForm extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: cardInput.balanceController,
+                controller: widget.cardInput.balanceController,
                 decoration: const InputDecoration(
                   labelText: 'Баланс',
                   hintText: '0.00',
@@ -1779,7 +1838,7 @@ class _ModernBankCardForm extends StatelessWidget {
   }
 }
 
-class _MobileWalletForm extends StatelessWidget {
+class _MobileWalletForm extends StatefulWidget {
   final MobileWalletInput walletInput;
   final VoidCallback onRemove;
   final int index;
@@ -1789,6 +1848,12 @@ class _MobileWalletForm extends StatelessWidget {
     required this.onRemove,
     required this.index,
   });
+
+  @override
+  State<_MobileWalletForm> createState() => _MobileWalletFormState();
+}
+
+class _MobileWalletFormState extends State<_MobileWalletForm> {
 
   List<List<Color>> _getWalletGradients() {
     return [
@@ -1802,14 +1867,14 @@ class _MobileWalletForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getWalletGradients()[index % _getWalletGradients().length];
-    final walletName = walletInput.nameController.text.isEmpty
-        ? 'Кошелек ${index + 1}'
-        : walletInput.nameController.text;
-    final phone = walletInput.phoneController.text.isEmpty
+    final colors = _getWalletGradients()[widget.index % _getWalletGradients().length];
+    final walletName = widget.walletInput.nameController.text.isEmpty
+        ? 'Кошелек ${widget.index + 1}'
+        : widget.walletInput.nameController.text;
+    final phone = widget.walletInput.phoneController.text.isEmpty
         ? '+7 (•••) •••-••-••'
-        : walletInput.phoneController.text;
-    final balance = double.tryParse(walletInput.balanceController.text) ?? 0.0;
+        : widget.walletInput.phoneController.text;
+    final balance = double.tryParse(widget.walletInput.balanceController.text) ?? 0.0;
 
     return GestureDetector(
       onTap: () => _showEditDialog(context),
@@ -1852,6 +1917,25 @@ class _MobileWalletForm extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
+                      onPressed: () {
+                        setState(() {
+                          widget.walletInput.isHidden = !widget.walletInput.isHidden;
+                        });
+                      },
+                      icon: Icon(
+                        widget.walletInput.isHidden
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: Colors.white.withValues(
+                          alpha: widget.walletInput.isHidden ? 0.4 : 0.7,
+                        ),
+                        size: 20,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       onPressed: () => _showEditDialog(context),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
@@ -1859,7 +1943,7 @@ class _MobileWalletForm extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: onRemove,
+                      onPressed: widget.onRemove,
                       icon: const Icon(Icons.delete_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1954,7 +2038,7 @@ class _MobileWalletForm extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
-              controller: walletInput.nameController,
+              controller: widget.walletInput.nameController,
               decoration: const InputDecoration(
                 labelText: 'Название кошелька',
                 hintText: 'Например: Яндекс.Деньги',
@@ -1963,7 +2047,7 @@ class _MobileWalletForm extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: walletInput.phoneController,
+              controller: widget.walletInput.phoneController,
               decoration: const InputDecoration(
                 labelText: 'Номер телефона',
                 hintText: '+79001234567',
@@ -1973,7 +2057,7 @@ class _MobileWalletForm extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: walletInput.balanceController,
+              controller: widget.walletInput.balanceController,
               decoration: const InputDecoration(
                 labelText: 'Баланс',
                 hintText: '0.00',
