@@ -702,7 +702,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                           ],
                                         ),
                                       ),
-                                      Icon(
+                                      const Icon(
                                         Icons.arrow_forward_ios_rounded,
                                         color: Colors.white,
                                         size: 16,
@@ -1283,77 +1283,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _ModernTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final IconData icon;
-  final Widget? suffix;
-  final TextInputType? keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
-  final String? Function(String?)? validator;
-
-  const _ModernTextField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.icon,
-    this.suffix,
-    this.keyboardType,
-    this.inputFormatters,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        validator: validator,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: Colors.black87,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: Colors.grey.shade700,
-            fontWeight: FontWeight.w500,
-          ),
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade500),
-          prefixIcon: Icon(icon, color: Colors.deepPurple.shade400),
-          suffix: suffix,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class CashLocationInput {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
@@ -1401,7 +1330,7 @@ class _CashLocationFormState extends State<_CashLocationForm> {
     final icon = _getLocationIcons()[widget.index % _getLocationIcons().length];
 
     return GestureDetector(
-      onTap: () => _showEditDialog(context),
+      onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1463,7 +1392,7 @@ class _CashLocationFormState extends State<_CashLocationForm> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: () => _showEditDialog(context),
+                      onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1513,7 +1442,7 @@ class _CashLocationFormState extends State<_CashLocationForm> {
     );
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1630,7 +1559,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
     final balance = double.tryParse(widget.cardInput.balanceController.text) ?? 0.0;
 
     return GestureDetector(
-      onTap: () => _showEditDialog(context),
+      onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1692,7 +1621,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: () => _showEditDialog(context),
+                      onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1766,7 +1695,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
     );
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1877,7 +1806,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
     final balance = double.tryParse(widget.walletInput.balanceController.text) ?? 0.0;
 
     return GestureDetector(
-      onTap: () => _showEditDialog(context),
+      onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1936,7 +1865,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: () => _showEditDialog(context),
+                      onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -2029,7 +1958,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
     );
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
