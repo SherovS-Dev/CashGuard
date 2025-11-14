@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shake/shake.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/debt.dart';
@@ -26,6 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   User? _user;
   bool _isLoading = true;
   List<Debt> _debts = [];
+  bool _showHiddenFunds = false;
+  ShakeDetector? _shakeDetector;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -41,11 +45,61 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _loadUserData();
+    _initShakeDetector();
+  }
+
+  void _initShakeDetector() {
+    print('🚀 Инициализация ShakeDetector');
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: (_) {
+        print('📳 Shake callback вызван');
+        _toggleHiddenFundsVisibility();
+      },
+      minimumShakeCount: 1,
+      shakeSlopTimeMS: 300,
+      shakeCountResetTime: 1000,
+      shakeThresholdGravity: 2.0,
+    );
+    print('✅ ShakeDetector инициализирован');
+  }
+
+  void _toggleHiddenFundsVisibility() {
+    print('🔔 Встряхивание обнаружено!');
+
+    if (!mounted) {
+      print('❌ Widget не mounted');
+      return;
+    }
+
+    // Проверяем, есть ли скрытые средства
+    final hasHiddenFunds = _user != null && (
+      _user!.cashLocations.any((loc) => loc.isHidden) ||
+      _user!.bankCards.any((card) => card.isHidden) ||
+      _user!.mobileWallets.any((wallet) => wallet.isHidden)
+    );
+
+    print('📊 Есть скрытые средства: $hasHiddenFunds');
+
+    if (!hasHiddenFunds) {
+      print('❌ Нет скрытых средств для показа');
+      return;
+    }
+
+    print('✅ Показываем скрытые средства');
+
+    // Вибрация
+    HapticFeedback.mediumImpact();
+
+    // Показываем скрытые средства (они останутся до обновления страницы)
+    setState(() {
+      _showHiddenFunds = true;
+    });
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _shakeDetector?.stopListening();
     super.dispose();
   }
 
@@ -62,6 +116,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _user = user;
       _debts = debts;
       _isLoading = false;
+      // Скрываем временно показанные средства при обновлении
+      _showHiddenFunds = false;
     });
     _animationController.forward();
   }
@@ -345,6 +401,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        const Spacer(),
+                        // Подсказка о встряхивании
+                        if (_user!.cashLocations.any((loc) => loc.isHidden) ||
+                            _user!.bankCards.any((card) => card.isHidden) ||
+                            _user!.mobileWallets.any((wallet) => wallet.isHidden))
+                          Icon(
+                            Icons.vibration,
+                            color: Colors.white.withValues(alpha: 0.5),
+                            size: 18,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -357,6 +423,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         letterSpacing: -0.5,
                       ),
                     ),
+                    if (_user!.cashLocations.any((loc) => loc.isHidden) ||
+                        _user!.bankCards.any((card) => card.isHidden) ||
+                        _user!.mobileWallets.any((wallet) => wallet.isHidden))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Встряхните телефон для просмотра скрытых',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -487,7 +567,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const SizedBox(height: 12),
 
               // Отображаем каждое место хранения наличных отдельно
-              if (_user!.cashLocations.isNotEmpty) ...[
+              if (_user!.cashLocations.where((loc) => _showHiddenFunds || !loc.isHidden).isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
                   'Наличные',
@@ -498,19 +578,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(
-                  _user!.cashLocations.length,
-                      (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _CompactCashCard(
-                      location: _user!.cashLocations[index],
-                      onToggleHidden: () => _toggleCashLocationVisibility(index),
-                    ),
-                  ),
-                ),
+                ..._user!.cashLocations.asMap().entries
+                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                    .map((entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CompactCashCard(
+                        location: entry.value,
+                        onToggleHidden: () => _toggleCashLocationVisibility(entry.key),
+                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                      ),
+                    )).toList(),
               ],
 
-              if (_user!.mobileWallets.isNotEmpty) ...[
+              if (_user!.mobileWallets.where((wallet) => _showHiddenFunds || !wallet.isHidden).isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
                   'Мобильные кошельки',
@@ -521,20 +601,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(
-                  _user!.mobileWallets.length,
-                      (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _CompactMobileWalletCard(
-                      wallet: _user!.mobileWallets[index],
-                      index: index,
-                      onToggleHidden: () => _toggleMobileWalletVisibility(index),
-                    ),
-                  ),
-                ),
+                ..._user!.mobileWallets.asMap().entries
+                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                    .map((entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CompactMobileWalletCard(
+                        wallet: entry.value,
+                        index: entry.key,
+                        onToggleHidden: () => _toggleMobileWalletVisibility(entry.key),
+                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                      ),
+                    )).toList(),
               ],
 
-              if (_user!.bankCards.isNotEmpty) ...[
+              if (_user!.bankCards.where((card) => _showHiddenFunds || !card.isHidden).isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
                   'Банковские карты',
@@ -545,18 +625,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(
-                  _user!.bankCards.length,
-                      (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _CompactBankCard(
-                      card: _user!.bankCards[index],
-                      index: index,
-                      onToggleHidden: () => _toggleBankCardVisibility(index),
-                    ),
-                  ),
-                ),
-              ] else ...[
+                ..._user!.bankCards.asMap().entries
+                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                    .map((entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CompactBankCard(
+                        card: entry.value,
+                        index: entry.key,
+                        onToggleHidden: () => _toggleBankCardVisibility(entry.key),
+                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                      ),
+                    )).toList(),
+              ] else if (_user!.bankCards.isEmpty) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -670,10 +750,12 @@ class _QuickActionButton extends StatelessWidget {
 class _CompactCashCard extends StatelessWidget {
   final CashLocation location;
   final VoidCallback onToggleHidden;
+  final bool isTemporarilyVisible;
 
   const _CompactCashCard({
     required this.location,
     required this.onToggleHidden,
+    this.isTemporarilyVisible = false,
   });
 
   String _formatCurrency(double amount) {
@@ -685,9 +767,16 @@ class _CompactCashCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isTemporarilyVisible
+            ? Colors.orange.shade50.withValues(alpha: 0.3)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isTemporarilyVisible
+              ? Colors.orange.shade300
+              : Colors.grey.shade200,
+          width: isTemporarilyVisible ? 2 : 1,
+        ),
       ),
       child: Row(
         children: [
@@ -749,12 +838,14 @@ class _CompactCashCard extends StatelessWidget {
 class _CompactMobileWalletCard extends StatelessWidget {
   final MobileWallet wallet;
   final int index;
-  final VoidCallback onToggleHidden; // ДОБАВЛЕНО
+  final VoidCallback onToggleHidden;
+  final bool isTemporarilyVisible;
 
   const _CompactMobileWalletCard({
     required this.wallet,
     required this.index,
-    required this.onToggleHidden, // ДОБАВЛЕНО
+    required this.onToggleHidden,
+    this.isTemporarilyVisible = false,
   });
 
   String _formatCurrency(double amount) {
@@ -778,9 +869,16 @@ class _CompactMobileWalletCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isTemporarilyVisible
+            ? Colors.orange.shade50.withValues(alpha: 0.3)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isTemporarilyVisible
+              ? Colors.orange.shade300
+              : Colors.grey.shade200,
+          width: isTemporarilyVisible ? 2 : 1,
+        ),
       ),
       child: Row(
         children: [
@@ -842,12 +940,14 @@ class _CompactMobileWalletCard extends StatelessWidget {
 class _CompactBankCard extends StatelessWidget {
   final BankCard card;
   final int index;
-  final VoidCallback onToggleHidden; // ДОБАВЛЕНО
+  final VoidCallback onToggleHidden;
+  final bool isTemporarilyVisible;
 
   const _CompactBankCard({
     required this.card,
     required this.index,
-    required this.onToggleHidden, // ДОБАВЛЕНО
+    required this.onToggleHidden,
+    this.isTemporarilyVisible = false,
   });
 
   String _formatCurrency(double amount) {
@@ -872,9 +972,16 @@ class _CompactBankCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isTemporarilyVisible
+            ? Colors.orange.shade50.withValues(alpha: 0.3)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isTemporarilyVisible
+              ? Colors.orange.shade300
+              : Colors.grey.shade200,
+          width: isTemporarilyVisible ? 2 : 1,
+        ),
       ),
       child: Row(
         children: [

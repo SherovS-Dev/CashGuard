@@ -27,6 +27,10 @@ dependencies:
   # Защита от скриншотов и записи экрана
   screen_protector: ^1.4.2
 
+  # Для определения встряхивания устройства
+  shake: ^3.0.0
+  sensors_plus: ^6.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
