@@ -422,6 +422,18 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _addDebt,
+          backgroundColor: Colors.deepPurple.shade600,
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Text(
+            'Добавить долг',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(

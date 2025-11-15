@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/debt.dart';
+import '../models/transaction.dart';
+import '../models/user.dart';
+import '../models/cash_location.dart';
+import '../models/bank_card.dart';
+import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 
 class AddDebtScreen extends StatefulWidget {
@@ -26,9 +31,14 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
   DateTime? _dueDate;
   bool _isEditMode = false;
 
+  TransactionLocation? _selectedLocation;
+  List<TransactionLocation> _availableLocations = [];
+  bool _isLoadingLocations = true;
+
   @override
   void initState() {
     super.initState();
+    _loadLocations();
     if (widget.debtToEdit != null) {
       _isEditMode = true;
       final debt = widget.debtToEdit!;
@@ -41,6 +51,63 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
       _startDate = debt.startDate;
       _dueDate = debt.dueDate;
     }
+  }
+
+  Future<void> _loadLocations() async {
+    final user = await _storageService.getUserData();
+    if (user == null) return;
+
+    final locations = <TransactionLocation>[];
+
+    // Добавляем все места хранения наличных (без учета скрытых)
+    for (var cashLocation in user.cashLocations) {
+      if (!cashLocation.isHidden) {
+        locations.add(
+          TransactionLocation(
+            type: LocationType.cash,
+            name: cashLocation.name,
+            id: cashLocation.id,
+          ),
+        );
+      }
+    }
+
+    // Добавляем банковские карты (без учета скрытых)
+    for (var card in user.bankCards) {
+      if (!card.isHidden) {
+        final uniqueId = '${card.cardName}|${card.cardNumber.substring(card.cardNumber.length - 4)}';
+        locations.add(
+          TransactionLocation(
+            type: LocationType.card,
+            name: card.bankName != null
+                ? '${card.bankName} •${card.cardNumber.substring(card.cardNumber.length - 4)}'
+                : '${card.cardName} •${card.cardNumber.substring(card.cardNumber.length - 4)}',
+            id: uniqueId,
+          ),
+        );
+      }
+    }
+
+    // Добавляем мобильные кошельки (без учета скрытых)
+    for (var wallet in user.mobileWallets) {
+      if (!wallet.isHidden) {
+        locations.add(
+          TransactionLocation(
+            type: LocationType.mobileWallet,
+            name: wallet.name,
+            id: wallet.phoneNumber,
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _availableLocations = locations;
+      _isLoadingLocations = false;
+      if (locations.isNotEmpty && _selectedLocation == null) {
+        _selectedLocation = locations.first;
+      }
+    });
   }
 
   @override
@@ -61,6 +128,28 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         return 'Кому дали';
       case DebtType.credit:
         return 'Название банка';
+    }
+  }
+
+  String _getLocationLabel() {
+    switch (_selectedType) {
+      case DebtType.borrowed:
+        return 'Откуда взять деньги'; // Я даю деньги → уменьшается баланс
+      case DebtType.lent:
+        return 'Куда положить деньги'; // Мне дают деньги → увеличивается баланс
+      case DebtType.credit:
+        return 'Куда зачислить кредит'; // Я беру кредит → увеличивается баланс
+    }
+  }
+
+  IconData _getLocationIcon(LocationType type) {
+    switch (type) {
+      case LocationType.cash:
+        return Icons.payments_rounded;
+      case LocationType.card:
+        return Icons.credit_card_rounded;
+      case LocationType.mobileWallet:
+        return Icons.phone_android_rounded;
     }
   }
 
@@ -88,6 +177,17 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
       return;
     }
 
+    // Проверяем выбор источника средств только при добавлении нового долга
+    if (!_isEditMode && _selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Пожалуйста, выберите источник средств'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final debt = Debt(
       id: _isEditMode ? widget.debtToEdit!.id : DateTime.now().millisecondsSinceEpoch.toString(),
       description: _descriptionController.text.trim(),
@@ -105,11 +205,105 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     if (_isEditMode) {
       await _storageService.updateDebt(debt);
     } else {
+      // При добавлении нового долга обновляем баланс пользователя
       await _storageService.addDebt(debt);
+
+      final user = await _storageService.getUserData();
+      if (user != null && _selectedLocation != null) {
+        final amount = double.parse(_amountController.text);
+        double amountChange;
+
+        // Логика изменения баланса:
+        // - DebtType.borrowed (Мне должны): я даю деньги → УМЕНЬШИТЬ баланс
+        // - DebtType.lent (Я должен): мне дают деньги → УВЕЛИЧИТЬ баланс
+        // - DebtType.credit (Кредит): я беру кредит → УВЕЛИЧИТЬ баланс
+        if (_selectedType == DebtType.borrowed) {
+          amountChange = -amount; // Я даю деньги
+        } else {
+          amountChange = amount; // Мне дают деньги (lent или credit)
+        }
+
+        final updatedUser = _updateBalance(user, _selectedLocation!, amountChange);
+        await _storageService.saveUserData(updatedUser);
+      }
     }
 
     if (!mounted) return;
     Navigator.of(context).pop(true);
+  }
+
+  User _updateBalance(User user, TransactionLocation location, double amountChange) {
+    switch (location.type) {
+      case LocationType.cash:
+        final updatedCashLocations = user.cashLocations.map((loc) {
+          if (loc.id == location.id) {
+            return CashLocation(
+              id: loc.id,
+              name: loc.name,
+              amount: loc.amount + amountChange,
+              isHidden: loc.isHidden,
+            );
+          }
+          return loc;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: updatedCashLocations,
+          bankCards: user.bankCards,
+          mobileWallets: user.mobileWallets,
+        );
+
+      case LocationType.card:
+        final parts = location.id?.split('|');
+        if (parts == null || parts.length != 2) {
+          return user;
+        }
+
+        final cardName = parts[0];
+        final last4Digits = parts[1];
+
+        final updatedCards = user.bankCards.map((card) {
+          final cardLast4 = card.cardNumber.substring(card.cardNumber.length - 4);
+          if (card.cardName == cardName && cardLast4 == last4Digits) {
+            return BankCard(
+              cardName: card.cardName,
+              cardNumber: card.cardNumber,
+              balance: card.balance + amountChange,
+              bankName: card.bankName,
+              isHidden: card.isHidden,
+            );
+          }
+          return card;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: user.cashLocations,
+          bankCards: updatedCards,
+          mobileWallets: user.mobileWallets,
+        );
+
+      case LocationType.mobileWallet:
+        final updatedWallets = user.mobileWallets.map((wallet) {
+          if (wallet.name == location.name) {
+            return MobileWallet(
+              name: wallet.name,
+              phoneNumber: wallet.phoneNumber,
+              balance: wallet.balance + amountChange,
+              isHidden: wallet.isHidden,
+            );
+          }
+          return wallet;
+        }).toList();
+
+        return User(
+          name: user.name,
+          cashLocations: user.cashLocations,
+          bankCards: user.bankCards,
+          mobileWallets: updatedWallets,
+        );
+    }
   }
 
   @override
@@ -315,6 +509,119 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       ),
 
                       const SizedBox(height: 16),
+
+                      // Location Selector (только при добавлении нового долга)
+                      if (!_isEditMode) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade200,
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.account_balance_wallet_rounded,
+                                      color: Colors.deepPurple.shade400,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      _getLocationLabel(),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_isLoadingLocations)
+                                const Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                              else if (_availableLocations.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Text(
+                                    'Нет доступных источников средств',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...(_availableLocations.map((location) {
+                                  final isSelected = _selectedLocation?.id == location.id;
+                                  return InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedLocation = location;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? Colors.deepPurple.shade50 : Colors.transparent,
+                                        border: Border(
+                                          top: BorderSide(
+                                            color: Colors.grey.shade200,
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _getLocationIcon(location.type),
+                                            color: isSelected
+                                                ? Colors.deepPurple.shade600
+                                                : Colors.grey.shade600,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              location.name,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                                color: isSelected
+                                                    ? Colors.deepPurple.shade700
+                                                    : Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isSelected)
+                                            Icon(
+                                              Icons.check_circle_rounded,
+                                              color: Colors.deepPurple.shade600,
+                                              size: 20,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList()),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Interest Rate
                       _buildTextField(
