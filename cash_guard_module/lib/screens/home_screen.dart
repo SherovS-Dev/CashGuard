@@ -14,6 +14,7 @@ import 'user_setup_screen.dart';
 import 'add_transaction_screen.dart';
 import 'transactions_screen.dart';
 import 'settings_screen.dart';
+import 'statistics_screen.dart';
 import '../models/user.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -126,6 +127,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  void _openStatistics() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const StatisticsScreen(),
       ),
     );
   }
@@ -290,6 +299,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart_rounded, color: Colors.white),
+            tooltip: 'Статистика',
+            onPressed: _openStatistics,
+          ),
           IconButton(
             icon: const Icon(Icons.settings_rounded, color: Colors.white),
             tooltip: 'Настройки',
