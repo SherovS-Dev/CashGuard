@@ -50,10 +50,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _initShakeDetector() {
-    print('🚀 Инициализация ShakeDetector');
     _shakeDetector = ShakeDetector.autoStart(
       onPhoneShake: (_) {
-        print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
       minimumShakeCount: 3,
@@ -61,14 +59,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       shakeCountResetTime: 2000,
       shakeThresholdGravity: 2.5,
     );
-    print('✅ ShakeDetector инициализирован');
   }
 
   void _toggleHiddenFundsVisibility() {
-    print('🔔 Встряхивание обнаружено!');
-
     if (!mounted) {
-      print('❌ Widget не mounted');
       return;
     }
 
@@ -79,14 +73,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _user!.mobileWallets.any((wallet) => wallet.isHidden)
     );
 
-    print('📊 Есть скрытые средства: $hasHiddenFunds');
-
     if (!hasHiddenFunds) {
-      print('❌ Нет скрытых средств для показа');
       return;
     }
-
-    print('✅ Показываем скрытые средства');
 
     // Вибрация
     HapticFeedback.mediumImpact();
@@ -544,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         index: entry.key,
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
-                    )).toList(),
+                    )),
               ],
 
               if (_user!.mobileWallets.where((wallet) => _showHiddenFunds || !wallet.isHidden).isNotEmpty) ...[
@@ -567,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         index: entry.key,
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
-                    )).toList(),
+                    )),
               ],
 
               if (_user!.bankCards.where((card) => _showHiddenFunds || !card.isHidden).isNotEmpty) ...[
@@ -590,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         index: entry.key,
                         isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
                       ),
-                    )).toList(),
+                    )),
               ] else if (_user!.bankCards.isEmpty) ...[
                 const SizedBox(height: 8),
                 Container(

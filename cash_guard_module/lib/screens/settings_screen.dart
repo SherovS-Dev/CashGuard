@@ -143,19 +143,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  IconData _getThemeIcon(String mode) {
-    switch (mode) {
-      case 'light':
-        return Icons.light_mode_rounded;
-      case 'dark':
-        return Icons.dark_mode_rounded;
-      case 'system':
-        return Icons.brightness_auto_rounded;
-      default:
-        return Icons.brightness_auto_rounded;
-    }
-  }
-
   Future<void> _resetPassword() async {
     final shouldReset = await showDialog<bool>(
       context: context,

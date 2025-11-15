@@ -39,10 +39,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   void _initShakeDetector() {
-    print('🚀 Инициализация ShakeDetector');
     _shakeDetector = ShakeDetector.autoStart(
       onPhoneShake: (_) {
-        print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
       minimumShakeCount: 3,
@@ -50,14 +48,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       shakeCountResetTime: 2000,
       shakeThresholdGravity: 2.5,
     );
-    print('✅ ShakeDetector инициализирован');
   }
 
   void _toggleHiddenFundsVisibility() {
-    print('🔔 Встряхивание обнаружено!');
-
     if (!mounted) {
-      print('❌ Widget не mounted');
       return;
     }
 
@@ -71,8 +65,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     // Перезагружаем список средств с учетом скрытых
     _loadLocations();
-
-    print('✅ Показываем скрытые средства');
   }
 
   @override

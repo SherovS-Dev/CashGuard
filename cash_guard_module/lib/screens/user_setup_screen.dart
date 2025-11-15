@@ -55,10 +55,8 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   }
 
   void _initShakeDetector() {
-    print('🚀 Инициализация ShakeDetector');
     _shakeDetector = ShakeDetector.autoStart(
       onPhoneShake: (_) {
-        print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
       minimumShakeCount: 3,
@@ -66,14 +64,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       shakeCountResetTime: 2000,
       shakeThresholdGravity: 2.5,
     );
-    print('✅ ShakeDetector инициализирован');
   }
 
   void _toggleHiddenFundsVisibility() {
-    print('🔔 Встряхивание обнаружено!');
-
     if (!mounted) {
-      print('❌ Widget не mounted');
       return;
     }
 
@@ -83,11 +77,8 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         _mobileWallets.any((wallet) => wallet.isHidden);
 
     if (!hasHiddenFunds) {
-      print('❌ Нет скрытых средств для показа');
       return;
     }
-
-    print('✅ Показываем скрытые средства');
 
     // Вибрация
     HapticFeedback.mediumImpact();

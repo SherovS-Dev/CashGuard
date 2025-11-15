@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
@@ -44,10 +43,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Future<void> _cleanOldTransactions() async {
     final transactions = await _storageService.getTransactions();
     final now = DateTime.now();
-    final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day - 1);
+    // Хранить транзакции за 3 месяца + 1 день
+    final cutoffDate = DateTime(now.year, now.month - 3, now.day + 1);
 
     final filteredTransactions = transactions.where((t) {
-      return t.date.isAfter(threeMonthsAgo);
+      return t.date.isAfter(cutoffDate) || t.date.isAtSameMomentAs(cutoffDate);
     }).toList();
 
     if (filteredTransactions.length != transactions.length) {

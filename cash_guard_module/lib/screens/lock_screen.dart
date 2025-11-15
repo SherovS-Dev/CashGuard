@@ -25,8 +25,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
@@ -41,15 +39,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
     );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
-    );
-
-    // Пульсирующая анимация для иконки
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     // Анимация тряски для ошибки
@@ -68,7 +57,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController.dispose();
-    _pulseController.dispose();
     _shakeController.dispose();
     super.dispose();
   }
