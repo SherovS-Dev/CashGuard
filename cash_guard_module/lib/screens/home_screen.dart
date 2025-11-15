@@ -55,10 +55,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
-      minimumShakeCount: 1,
-      shakeSlopTimeMS: 300,
-      shakeCountResetTime: 1000,
-      shakeThresholdGravity: 2.0,
+      minimumShakeCount: 3,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 2000,
+      shakeThresholdGravity: 2.5,
     );
     print('✅ ShakeDetector инициализирован');
   }

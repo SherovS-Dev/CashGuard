@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/debt.dart';
 import '../services/secure_storage_service.dart';
 import 'add_debt_screen.dart';
@@ -388,7 +389,39 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.deepPurple.shade700,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.deepPurple.shade50,
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.deepPurple.shade700,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -400,31 +433,16 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               ],
             ),
           ),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.deepPurple.shade50,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: SafeArea(
           child: Column(
             children: [
-              // App Bar
+              // App Bar (extends to status bar)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // ИЗМЕНЕНО
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 16,
+                  right: 16,
+                  bottom: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -578,18 +596,6 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addDebt,
-        backgroundColor: Colors.deepPurple.shade600,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Добавить',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ),

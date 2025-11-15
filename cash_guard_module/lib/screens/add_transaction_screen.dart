@@ -45,10 +45,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
-      minimumShakeCount: 1,
-      shakeSlopTimeMS: 300,
-      shakeCountResetTime: 1000,
-      shakeThresholdGravity: 2.0,
+      minimumShakeCount: 3,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 2000,
+      shakeThresholdGravity: 2.5,
     );
     print('✅ ShakeDetector инициализирован');
   }
@@ -337,7 +337,39 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingLocations) {
-      return Scaffold(
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.deepPurple.shade700,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.deepPurple.shade50,
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.deepPurple.shade700,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -349,31 +381,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ],
             ),
           ),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.deepPurple.shade50,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: SafeArea(
           child: Column(
             children: [
-              // Custom App Bar
+              // Custom App Bar (extends to status bar)
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 20,
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,

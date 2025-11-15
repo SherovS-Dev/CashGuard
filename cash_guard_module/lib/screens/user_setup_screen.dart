@@ -61,10 +61,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         print('📳 Shake callback вызван');
         _toggleHiddenFundsVisibility();
       },
-      minimumShakeCount: 1,
-      shakeSlopTimeMS: 300,
-      shakeCountResetTime: 1000,
-      shakeThresholdGravity: 2.0,
+      minimumShakeCount: 3,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 2000,
+      shakeThresholdGravity: 2.5,
     );
     print('✅ ShakeDetector инициализирован');
   }
@@ -497,27 +497,80 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.deepPurple.shade700,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.deepPurple.shade50,
+                  Colors.white,
+                ],
+              ),
             ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
         ),
       );
     }
 
     if (_isRestoring) {
-      return Scaffold(
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.deepPurple.shade700,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.deepPurple.shade50,
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 24),
+                  Text(
+                    'Восстановление данных...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.deepPurple.shade700,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -529,45 +582,16 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
               ],
             ),
           ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 24),
-                Text(
-                  'Восстановление данных...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.deepPurple.shade50,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: SafeArea(
           child: Column(
             children: [
-              // Custom App Bar с счетчиками
+              // Custom App Bar с счетчиками (extends to status bar)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 16,
+                  right: 16,
+                  bottom: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
