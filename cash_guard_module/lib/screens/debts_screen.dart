@@ -539,59 +539,52 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Tabs
-              Container(
-                color: Colors.white,
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: Colors.deepPurple.shade700,
-                  unselectedLabelColor: Colors.grey.shade600,
-                  indicatorColor: Colors.deepPurple.shade700,
-                  indicatorWeight: 3,
-                  tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.arrow_downward_rounded, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Мне (${_borrowedDebts.where((d) => d.status != DebtStatus.fullyPaid).length})',
-                            style: const TextStyle(fontSize: 13),
-                          ),
+                    const SizedBox(height: 16),
+                    // Modern TabBar
+                    Container(
+                      height: 45,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.deepPurple.shade700,
+                        unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+                        labelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        overlayColor: WidgetStateProperty.all(Colors.transparent),
+                        tabs: const [
+                          Tab(text: 'Мне должны'),
+                          Tab(text: 'Я должен'),
+                          Tab(text: 'Кредиты'),
                         ],
                       ),
                     ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.arrow_upward_rounded, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Я (${_lentDebts.where((d) => d.status != DebtStatus.fullyPaid).length})',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.account_balance_rounded, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Кредиты (${_credits.where((d) => d.status != DebtStatus.fullyPaid).length})',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
