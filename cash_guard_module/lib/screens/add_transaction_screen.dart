@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shake/shake.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
@@ -27,16 +28,58 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   List<TransactionLocation> _availableLocations = [];
   bool _isLoadingLocations = true;
 
+  ShakeDetector? _shakeDetector;
+  bool _showHiddenFunds = false;
+
   @override
   void initState() {
     super.initState();
     _loadLocations();
+    _initShakeDetector();
+  }
+
+  void _initShakeDetector() {
+    print('🚀 Инициализация ShakeDetector');
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: (_) {
+        print('📳 Shake callback вызван');
+        _toggleHiddenFundsVisibility();
+      },
+      minimumShakeCount: 1,
+      shakeSlopTimeMS: 300,
+      shakeCountResetTime: 1000,
+      shakeThresholdGravity: 2.0,
+    );
+    print('✅ ShakeDetector инициализирован');
+  }
+
+  void _toggleHiddenFundsVisibility() {
+    print('🔔 Встряхивание обнаружено!');
+
+    if (!mounted) {
+      print('❌ Widget не mounted');
+      return;
+    }
+
+    // Вибрация
+    HapticFeedback.mediumImpact();
+
+    // Показываем скрытые средства (они останутся до обновления страницы)
+    setState(() {
+      _showHiddenFunds = true;
+    });
+
+    // Перезагружаем список средств с учетом скрытых
+    _loadLocations();
+
+    print('✅ Показываем скрытые средства');
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
+    _shakeDetector?.stopListening();
     super.dispose();
   }
 
@@ -46,48 +89,57 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     final locations = <TransactionLocation>[];
 
-    // Добавляем все места хранения наличных
+    // Добавляем все места хранения наличных (с учетом фильтрации скрытых)
     for (var cashLocation in user.cashLocations) {
-      locations.add(
-        TransactionLocation(
-          type: LocationType.cash,
-          name: cashLocation.name,
-          id: cashLocation.id,
-        ),
-      );
+      if (_showHiddenFunds || !cashLocation.isHidden) {
+        locations.add(
+          TransactionLocation(
+            type: LocationType.cash,
+            name: cashLocation.name,
+            id: cashLocation.id,
+            isTemporarilyVisible: cashLocation.isHidden && _showHiddenFunds,
+          ),
+        );
+      }
     }
 
     // ИСПРАВЛЕНО: Используем уникальный ID для карт (название + последние 4 цифры)
     for (var card in user.bankCards) {
-      // Создаем уникальный ID: "cardName|last4digits"
-      final uniqueId = '${card.cardName}|${card.cardNumber.substring(card.cardNumber.length - 4)}';
+      if (_showHiddenFunds || !card.isHidden) {
+        // Создаем уникальный ID: "cardName|last4digits"
+        final uniqueId = '${card.cardName}|${card.cardNumber.substring(card.cardNumber.length - 4)}';
 
-      locations.add(
-        TransactionLocation(
-          type: LocationType.card,
-          name: card.bankName != null
-              ? '${card.bankName} •${card.cardNumber.substring(card.cardNumber.length - 4)}'
-              : '${card.cardName} •${card.cardNumber.substring(card.cardNumber.length - 4)}',
-          id: uniqueId,  // ИСПРАВЛЕНО: используем уникальный ID
-        ),
-      );
+        locations.add(
+          TransactionLocation(
+            type: LocationType.card,
+            name: card.bankName != null
+                ? '${card.bankName} •${card.cardNumber.substring(card.cardNumber.length - 4)}'
+                : '${card.cardName} •${card.cardNumber.substring(card.cardNumber.length - 4)}',
+            id: uniqueId,  // ИСПРАВЛЕНО: используем уникальный ID
+            isTemporarilyVisible: card.isHidden && _showHiddenFunds,
+          ),
+        );
+      }
     }
 
-    // Добавляем мобильные кошельки
+    // Добавляем мобильные кошельки (с учетом фильтрации скрытых)
     for (var wallet in user.mobileWallets) {
-      locations.add(
-        TransactionLocation(
-          type: LocationType.mobileWallet,
-          name: wallet.name,
-          id: wallet.phoneNumber,
-        ),
-      );
+      if (_showHiddenFunds || !wallet.isHidden) {
+        locations.add(
+          TransactionLocation(
+            type: LocationType.mobileWallet,
+            name: wallet.name,
+            id: wallet.phoneNumber,
+            isTemporarilyVisible: wallet.isHidden && _showHiddenFunds,
+          ),
+        );
+      }
     }
 
     setState(() {
       _availableLocations = locations;
       _isLoadingLocations = false;
-      if (locations.isNotEmpty) {
+      if (locations.isNotEmpty && _selectedLocation == null) {
         _selectedLocation = locations.first;
       }
     });
@@ -264,6 +316,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         return Icons.credit_card_rounded;
       case LocationType.mobileWallet:
         return Icons.phone_android_rounded;
+    }
+  }
+
+  List<Color> _getLocationGradient(LocationType type, bool isTemporarilyVisible) {
+    if (isTemporarilyVisible) {
+      return [Colors.orange.shade400, Colors.orange.shade600];
+    }
+
+    switch (type) {
+      case LocationType.cash:
+        return [const Color(0xFF11998e), const Color(0xFF38ef7d)];
+      case LocationType.card:
+        return [const Color(0xFF667eea), const Color(0xFF764ba2)];
+      case LocationType.mobileWallet:
+        return [const Color(0xFF2193b0), const Color(0xFF6dd5ed)];
     }
   }
 
@@ -554,65 +621,82 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _availableLocations.map((location) {
+                      SizedBox(
+                        height: 80,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _availableLocations.length,
+                          itemBuilder: (context, index) {
+                            final location = _availableLocations[index];
                             final isSelected = _selectedLocation?.id == location.id;
-                            return ChoiceChip(
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getLocationIcon(location.type),
-                                    size: 18,
-                                    color: isSelected
-                                        ? Colors.deepPurple.shade700
-                                        : Colors.grey.shade600,
+                            final isTemporarilyVisible = location.isTemporarilyVisible;
+                            final gradient = _getLocationGradient(location.type, isTemporarilyVisible);
+
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: index == 0 ? 0 : 8,
+                                right: index == _availableLocations.length - 1 ? 0 : 8,
+                              ),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedLocation = location;
+                                  });
+                                },
+                                child: Container(
+                                  width: 200,
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: gradient,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: gradient[0].withValues(alpha: 0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                    border: isSelected
+                                        ? Border.all(color: Colors.white, width: 3)
+                                        : null,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(location.name),
-                                ],
-                              ),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedLocation = selected ? location : null;
-                                });
-                              },
-                              backgroundColor: Colors.grey.shade50,
-                              selectedColor: Colors.deepPurple.shade100,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? Colors.deepPurple.shade700
-                                    : Colors.grey.shade700,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? Colors.deepPurple.shade300
-                                    : Colors.grey.shade300,
-                                width: 1.5,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.25),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          _getLocationIcon(location.type),
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          location.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             );
-                          }).toList(),
+                          },
                         ),
                       ),
 
@@ -628,65 +712,82 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.shade200,
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _availableLocations.map((location) {
+                        SizedBox(
+                          height: 80,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _availableLocations.length,
+                            itemBuilder: (context, index) {
+                              final location = _availableLocations[index];
                               final isSelected = _selectedTransferTo?.id == location.id;
-                              return ChoiceChip(
-                                label: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _getLocationIcon(location.type),
-                                      size: 18,
-                                      color: isSelected
-                                          ? Colors.blue.shade700
-                                          : Colors.grey.shade600,
+                              final isTemporarilyVisible = location.isTemporarilyVisible;
+                              final gradient = _getLocationGradient(location.type, isTemporarilyVisible);
+
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  left: index == 0 ? 0 : 8,
+                                  right: index == _availableLocations.length - 1 ? 0 : 8,
+                                ),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedTransferTo = location;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 200,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: gradient,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: gradient[0].withValues(alpha: 0.4),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                      border: isSelected
+                                          ? Border.all(color: Colors.white, width: 3)
+                                          : null,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(location.name),
-                                  ],
-                                ),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _selectedTransferTo = selected ? location : null;
-                                  });
-                                },
-                                backgroundColor: Colors.grey.shade50,
-                                selectedColor: Colors.blue.shade100,
-                                labelStyle: TextStyle(
-                                  color: isSelected
-                                      ? Colors.blue.shade700
-                                      : Colors.grey.shade700,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                ),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? Colors.blue.shade300
-                                      : Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.25),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Icon(
+                                            _getLocationIcon(location.type),
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            location.name,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               );
-                            }).toList(),
+                            },
                           ),
                         ),
                       ],

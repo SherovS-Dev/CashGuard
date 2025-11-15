@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shake/shake.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
@@ -32,6 +33,9 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
 
+  ShakeDetector? _shakeDetector;
+  bool _showHiddenFunds = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,51 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       curve: Curves.easeOut,
     ));
     _loadExistingData();
+    _initShakeDetector();
+  }
+
+  void _initShakeDetector() {
+    print('🚀 Инициализация ShakeDetector');
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: (_) {
+        print('📳 Shake callback вызван');
+        _toggleHiddenFundsVisibility();
+      },
+      minimumShakeCount: 1,
+      shakeSlopTimeMS: 300,
+      shakeCountResetTime: 1000,
+      shakeThresholdGravity: 2.0,
+    );
+    print('✅ ShakeDetector инициализирован');
+  }
+
+  void _toggleHiddenFundsVisibility() {
+    print('🔔 Встряхивание обнаружено!');
+
+    if (!mounted) {
+      print('❌ Widget не mounted');
+      return;
+    }
+
+    // Проверяем, есть ли скрытые средства
+    final hasHiddenFunds = _cashLocations.any((loc) => loc.isHidden) ||
+        _bankCards.any((card) => card.isHidden) ||
+        _mobileWallets.any((wallet) => wallet.isHidden);
+
+    if (!hasHiddenFunds) {
+      print('❌ Нет скрытых средств для показа');
+      return;
+    }
+
+    print('✅ Показываем скрытые средства');
+
+    // Вибрация
+    HapticFeedback.mediumImpact();
+
+    // Показываем скрытые средства (они останутся до обновления страницы)
+    setState(() {
+      _showHiddenFunds = true;
+    });
   }
 
   Future<void> _loadExistingData() async {
@@ -56,6 +105,8 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       setState(() {
         _isEditMode = true;
         _nameController.text = user.name;
+        // Скрываем временно показанные средства при загрузке данных
+        _showHiddenFunds = false;
 
         // Загружаем основные наличные из cashLocations
         if (user.cashLocations.isNotEmpty) {
@@ -102,6 +153,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
     setState(() {
       _isLoading = false;
+      // Убеждаемся что скрытые средства не показаны при первой загрузке
+      if (user == null) {
+        _showHiddenFunds = false;
+      }
     });
     _animationController.forward();
   }
@@ -111,6 +166,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     _nameController.dispose();
     _cashInHandController.dispose();
     _animationController.dispose();
+    _shakeDetector?.stopListening();
     for (var card in _bankCards) {
       card.dispose();
     }
@@ -166,26 +222,51 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Личная информация'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.account_circle_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Личная информация',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Ваше имя',
                 hintText: 'Например: Иван',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _cashInHandController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Наличные в руке',
                 hintText: '0.00',
                 suffixText: '₽',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
@@ -197,14 +278,34 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             child: const Text('Отмена'),
           ),
-          FilledButton(
-            onPressed: () {
-              setState(() {});
-              Navigator.pop(context);
-            },
-            child: const Text('Сохранить'),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {});
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+            ),
           ),
         ],
       ),
@@ -911,27 +1012,79 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                             ),
                           )
                         else
-                          SizedBox(
-                            height: 200,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _cashLocations.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    right: index < _cashLocations.length - 1 ? 12 : 0,
-                                  ),
-                                  child: SizedBox(
-                                    width: 340,
-                                    child: _CashLocationForm(
-                                      locationInput: _cashLocations[index],
-                                      onRemove: () => _removeCashLocation(index),
-                                      index: index,
+                          Builder(
+                            builder: (context) {
+                              final visibleLocations = _cashLocations.asMap().entries
+                                  .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                                  .toList();
+
+                              if (visibleLocations.isEmpty) {
+                                return Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 1,
                                     ),
                                   ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.add_location_alt_rounded,
+                                        size: 28,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Нет дополнительных мест',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade800,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Например: в сейфе, в банке и т.д.',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                              },
-                            ),
+                              }
+
+                              return SizedBox(
+                                height: 200,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: visibleLocations.length,
+                                  itemBuilder: (context, visibleIndex) {
+                                    final entry = visibleLocations[visibleIndex];
+                                    final actualIndex = entry.key;
+                                    final location = entry.value;
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        right: visibleIndex < visibleLocations.length - 1 ? 12 : 0,
+                                      ),
+                                      child: SizedBox(
+                                        width: 340,
+                                        child: _CashLocationForm(
+                                          locationInput: location,
+                                          onRemove: () => _removeCashLocation(actualIndex),
+                                          index: actualIndex,
+                                          isTemporarilyVisible: location.isHidden && _showHiddenFunds,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           ),
 
                         const SizedBox(height: 20),
@@ -1016,27 +1169,79 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                             ),
                           )
                         else
-                          SizedBox(
-                            height: 200,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _bankCards.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    right: index < _bankCards.length - 1 ? 12 : 0,
-                                  ),
-                                  child: SizedBox(
-                                    width: 340,
-                                    child: _ModernBankCardForm(
-                                      cardInput: _bankCards[index],
-                                      onRemove: () => _removeBankCard(index),
-                                      index: index,
+                          Builder(
+                            builder: (context) {
+                              final visibleCards = _bankCards.asMap().entries
+                                  .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                                  .toList();
+
+                              if (visibleCards.isEmpty) {
+                                return Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 1,
                                     ),
                                   ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.credit_card_off_rounded,
+                                        size: 28,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Нет добавленных карт',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade800,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Нажмите + чтобы добавить карту',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                              },
-                            ),
+                              }
+
+                              return SizedBox(
+                                height: 200,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: visibleCards.length,
+                                  itemBuilder: (context, visibleIndex) {
+                                    final entry = visibleCards[visibleIndex];
+                                    final actualIndex = entry.key;
+                                    final card = entry.value;
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        right: visibleIndex < visibleCards.length - 1 ? 12 : 0,
+                                      ),
+                                      child: SizedBox(
+                                        width: 340,
+                                        child: _ModernBankCardForm(
+                                          cardInput: card,
+                                          onRemove: () => _removeBankCard(actualIndex),
+                                          index: actualIndex,
+                                          isTemporarilyVisible: card.isHidden && _showHiddenFunds,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           ),
 
                         const SizedBox(height: 20),
@@ -1121,27 +1326,79 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                             ),
                           )
                         else
-                          SizedBox(
-                            height: 200,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _mobileWallets.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    right: index < _mobileWallets.length - 1 ? 12 : 0,
-                                  ),
-                                  child: SizedBox(
-                                    width: 340,
-                                    child: _MobileWalletForm(
-                                      walletInput: _mobileWallets[index],
-                                      onRemove: () => _removeMobileWallet(index),
-                                      index: index,
+                          Builder(
+                            builder: (context) {
+                              final visibleWallets = _mobileWallets.asMap().entries
+                                  .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                                  .toList();
+
+                              if (visibleWallets.isEmpty) {
+                                return Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 1,
                                     ),
                                   ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.phonelink_off_rounded,
+                                        size: 28,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Нет мобильных кошельков',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade800,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Нажмите + чтобы добавить кошелек',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                              },
-                            ),
+                              }
+
+                              return SizedBox(
+                                height: 200,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: visibleWallets.length,
+                                  itemBuilder: (context, visibleIndex) {
+                                    final entry = visibleWallets[visibleIndex];
+                                    final actualIndex = entry.key;
+                                    final wallet = entry.value;
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        right: visibleIndex < visibleWallets.length - 1 ? 12 : 0,
+                                      ),
+                                      child: SizedBox(
+                                        width: 340,
+                                        child: _MobileWalletForm(
+                                          walletInput: wallet,
+                                          onRemove: () => _removeMobileWallet(actualIndex),
+                                          index: actualIndex,
+                                          isTemporarilyVisible: wallet.isHidden && _showHiddenFunds,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           ),
 
                         const SizedBox(height: 20),
@@ -1298,11 +1555,13 @@ class _CashLocationForm extends StatefulWidget {
   final CashLocationInput locationInput;
   final VoidCallback onRemove;
   final int index;
+  final bool isTemporarilyVisible;
 
   const _CashLocationForm({
     required this.locationInput,
     required this.onRemove,
     required this.index,
+    this.isTemporarilyVisible = false,
   });
 
   @override
@@ -1333,19 +1592,36 @@ class _CashLocationFormState extends State<_CashLocationForm> {
       onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.orange.shade400,
-              Colors.orange.shade600,
-            ],
-          ),
+          gradient: widget.isTemporarilyVisible
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.orange.shade300,
+                    Colors.orange.shade500,
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.orange.shade400,
+                    Colors.orange.shade600,
+                  ],
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: widget.isTemporarilyVisible
+              ? Border.all(
+                  color: Colors.orange.shade700,
+                  width: 3,
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.orange.shade300.withValues(alpha: 0.5),
-              blurRadius: 15,
+              color: widget.isTemporarilyVisible
+                  ? Colors.orange.shade400.withValues(alpha: 0.7)
+                  : Colors.orange.shade300.withValues(alpha: 0.5),
+              blurRadius: widget.isTemporarilyVisible ? 20 : 15,
               offset: const Offset(0, 8),
             ),
           ],
@@ -1372,25 +1648,6 @@ class _CashLocationFormState extends State<_CashLocationForm> {
                 ),
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          widget.locationInput.isHidden = !widget.locationInput.isHidden;
-                        });
-                      },
-                      icon: Icon(
-                        widget.locationInput.isHidden
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: Colors.white.withValues(
-                          alpha: widget.locationInput.isHidden ? 0.4 : 0.7,
-                        ),
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
@@ -1445,45 +1702,112 @@ class _CashLocationFormState extends State<_CashLocationForm> {
   void _showEditDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Редактировать место'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: widget.locationInput.nameController,
-              decoration: const InputDecoration(
-                labelText: 'Название места',
-                hintText: 'Например: В сейфе',
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade400, Colors.orange.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 24),
               ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Редактировать место',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  setDialogState(() {
+                    setState(() {
+                      widget.locationInput.isHidden = !widget.locationInput.isHidden;
+                    });
+                  });
+                },
+                icon: Icon(
+                  widget.locationInput.isHidden
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: widget.locationInput.isHidden
+                      ? Colors.grey.shade400
+                      : Colors.orange.shade600,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: widget.locationInput.nameController,
+                decoration: InputDecoration(
+                  labelText: 'Название места',
+                  hintText: 'Например: В сейфе',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: widget.locationInput.amountController,
+                decoration: InputDecoration(
+                  labelText: 'Сумма',
+                  hintText: '0.00',
+                  suffixText: '₽',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Отмена'),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: widget.locationInput.amountController,
-              decoration: const InputDecoration(
-                labelText: 'Сумма',
-                hintText: '0.00',
-                suffixText: '₽',
-                border: OutlineInputBorder(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange.shade400, Colors.orange.shade600],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {});
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
   }
@@ -1521,11 +1845,13 @@ class _ModernBankCardForm extends StatefulWidget {
   final BankCardInput cardInput;
   final VoidCallback onRemove;
   final int index;
+  final bool isTemporarilyVisible;
 
   const _ModernBankCardForm({
     required this.cardInput,
     required this.onRemove,
     required this.index,
+    this.isTemporarilyVisible = false,
   });
 
   @override
@@ -1562,16 +1888,30 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
       onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors,
-          ),
+          gradient: widget.isTemporarilyVisible
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.orange.shade400, Colors.orange.shade600],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: colors,
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: widget.isTemporarilyVisible
+              ? Border.all(
+                  color: Colors.orange.shade700,
+                  width: 3,
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: colors[0].withValues(alpha: 0.4),
-              blurRadius: 20,
+              color: widget.isTemporarilyVisible
+                  ? Colors.orange.shade400.withValues(alpha: 0.7)
+                  : colors[0].withValues(alpha: 0.4),
+              blurRadius: widget.isTemporarilyVisible ? 25 : 20,
               offset: const Offset(0, 10),
             ),
           ],
@@ -1601,25 +1941,6 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                 ),
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          widget.cardInput.isHidden = !widget.cardInput.isHidden;
-                        });
-                      },
-                      icon: Icon(
-                        widget.cardInput.isHidden
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: Colors.white.withValues(
-                          alpha: widget.cardInput.isHidden ? 0.4 : 0.7,
-                        ),
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
@@ -1696,72 +2017,141 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
   }
 
   void _showEditDialog() {
+    final colors = _getCardGradients()[widget.index % _getCardGradients().length];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Редактировать карту'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
             children: [
-              TextFormField(
-                controller: widget.cardInput.nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Название карты',
-                  hintText: 'Например: Основная карта',
-                  border: OutlineInputBorder(),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Редактировать карту',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: widget.cardInput.bankController,
-                decoration: const InputDecoration(
-                  labelText: 'Банк',
-                  hintText: 'Например: Сбербанк',
-                  border: OutlineInputBorder(),
+              IconButton(
+                onPressed: () {
+                  setDialogState(() {
+                    setState(() {
+                      widget.cardInput.isHidden = !widget.cardInput.isHidden;
+                    });
+                  });
+                },
+                icon: Icon(
+                  widget.cardInput.isHidden
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: widget.cardInput.isHidden
+                      ? Colors.grey.shade400
+                      : colors[0],
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: widget.cardInput.numberController,
-                decoration: const InputDecoration(
-                  labelText: 'Последние 4 цифры',
-                  hintText: '1234',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: widget.cardInput.balanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Баланс',
-                  hintText: '0.00',
-                  suffixText: '₽',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
               ),
             ],
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: widget.cardInput.nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Название карты',
+                    hintText: 'Например: Основная карта',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: widget.cardInput.bankController,
+                  decoration: InputDecoration(
+                    labelText: 'Банк',
+                    hintText: 'Например: Сбербанк',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: widget.cardInput.numberController,
+                  decoration: InputDecoration(
+                    labelText: 'Последние 4 цифры',
+                    hintText: '1234',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: widget.cardInput.balanceController,
+                  decoration: InputDecoration(
+                    labelText: 'Баланс',
+                    hintText: '0.00',
+                    suffixText: '₽',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Отмена'),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: colors),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {});
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
   }
@@ -1771,11 +2161,13 @@ class _MobileWalletForm extends StatefulWidget {
   final MobileWalletInput walletInput;
   final VoidCallback onRemove;
   final int index;
+  final bool isTemporarilyVisible;
 
   const _MobileWalletForm({
     required this.walletInput,
     required this.onRemove,
     required this.index,
+    this.isTemporarilyVisible = false,
   });
 
   @override
@@ -1809,16 +2201,30 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
       onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors,
-          ),
+          gradient: widget.isTemporarilyVisible
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.orange.shade400, Colors.orange.shade600],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: colors,
+                ),
           borderRadius: BorderRadius.circular(20),
+          border: widget.isTemporarilyVisible
+              ? Border.all(
+                  color: Colors.orange.shade700,
+                  width: 3,
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: colors[0].withValues(alpha: 0.4),
-              blurRadius: 20,
+              color: widget.isTemporarilyVisible
+                  ? Colors.orange.shade400.withValues(alpha: 0.7)
+                  : colors[0].withValues(alpha: 0.4),
+              blurRadius: widget.isTemporarilyVisible ? 25 : 20,
               offset: const Offset(0, 10),
             ),
           ],
@@ -1845,25 +2251,6 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                 ),
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          widget.walletInput.isHidden = !widget.walletInput.isHidden;
-                        });
-                      },
-                      icon: Icon(
-                        widget.walletInput.isHidden
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: Colors.white.withValues(
-                          alpha: widget.walletInput.isHidden ? 0.4 : 0.7,
-                        ),
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => _showEditDialog(),
                       icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
@@ -1959,57 +2346,124 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
   }
 
   void _showEditDialog() {
+    final colors = _getWalletGradients()[widget.index % _getWalletGradients().length];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Редактировать кошелек'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: widget.walletInput.nameController,
-              decoration: const InputDecoration(
-                labelText: 'Название кошелька',
-                hintText: 'Например: Яндекс.Деньги',
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.phone_android_rounded, color: Colors.white, size: 24),
               ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Редактировать кошелек',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  setDialogState(() {
+                    setState(() {
+                      widget.walletInput.isHidden = !widget.walletInput.isHidden;
+                    });
+                  });
+                },
+                icon: Icon(
+                  widget.walletInput.isHidden
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: widget.walletInput.isHidden
+                      ? Colors.grey.shade400
+                      : colors[0],
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: widget.walletInput.nameController,
+                decoration: InputDecoration(
+                  labelText: 'Название кошелька',
+                  hintText: 'Например: Яндекс.Деньги',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: widget.walletInput.phoneController,
+                decoration: InputDecoration(
+                  labelText: 'Номер телефона',
+                  hintText: '+79001234567',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: widget.walletInput.balanceController,
+                decoration: InputDecoration(
+                  labelText: 'Баланс',
+                  hintText: '0.00',
+                  suffixText: '₽',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Отмена'),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: widget.walletInput.phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Номер телефона',
-                hintText: '+79001234567',
-                border: OutlineInputBorder(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: colors),
+                borderRadius: BorderRadius.circular(12),
               ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: widget.walletInput.balanceController,
-              decoration: const InputDecoration(
-                labelText: 'Баланс',
-                hintText: '0.00',
-                suffixText: '₽',
-                border: OutlineInputBorder(),
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {});
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
   }

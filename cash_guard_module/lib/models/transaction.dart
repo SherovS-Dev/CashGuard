@@ -19,11 +19,13 @@ class TransactionLocation {
   final LocationType type;
   final String name;
   final String? id;
+  final bool isTemporarilyVisible;
 
   TransactionLocation({
     required this.type,
     required this.name,
     this.id,
+    this.isTemporarilyVisible = false,
   });
 
   Map<String, dynamic> toJson() {
