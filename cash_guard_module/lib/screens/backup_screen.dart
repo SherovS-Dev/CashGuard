@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/backup_service.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
 
 class BackupScreen extends StatefulWidget {
   const BackupScreen({super.key});
@@ -236,7 +236,7 @@ class _BackupScreenState extends State<BackupScreen> {
                   // Перезагружаем приложение
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => const HomeScreen(),
+                      builder: (context) => const MainNavigationScreen(),
                     ),
                         (route) => false,
                   );

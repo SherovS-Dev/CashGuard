@@ -44,8 +44,8 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
       final debt = widget.debtToEdit!;
       _descriptionController.text = debt.description;
       _creditorDebtorController.text = debt.creditorDebtor;
-      _amountController.text = debt.totalAmount.toString();
-      _interestRateController.text = debt.interestRate.toString();
+      _amountController.text = debt.totalAmount.toStringAsFixed(2);
+      _interestRateController.text = debt.interestRate.toStringAsFixed(2);
       _notesController.text = debt.notes ?? '';
       _selectedType = debt.type;
       _startDate = debt.startDate;
@@ -492,7 +492,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         label: 'Сумма долга',
                         hint: '0.00',
                         icon: Icons.attach_money_rounded,
-                        suffix: '₽',
+                        suffix: 'ЅМ',
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/secure_storage_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../constants/app_theme.dart';
 import 'backup_screen.dart';
 import 'lock_screen.dart';
 
@@ -54,13 +55,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.accentRed,
         ),
       );
       return;
     }
 
-    // Просто включаем/выключаем без требования аутентификации
     await _storageService.setBiometricEnabled(value);
     setState(() {
       _biometricEnabled = value;
@@ -85,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          backgroundColor: value ? Colors.green : Colors.orange,
+          backgroundColor: value ? AppColors.accentGreen : AppColors.accentOrange,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -113,34 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Вызываем callback для изменения темы
     widget.onThemeChanged?.call(themeMode);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.palette, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('Тема изменена: ${_getThemeName(mode)}'),
-            ],
-          ),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    }
-  }
-
-  String _getThemeName(String mode) {
-    switch (mode) {
-      case 'light':
-        return 'Светлая';
-      case 'dark':
-        return 'Темная';
-      case 'system':
-        return 'Системная';
-      default:
-        return 'Системная';
-    }
   }
 
   Future<void> _resetPassword() async {
@@ -150,26 +122,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
+        backgroundColor: AppColors.cardBackground,
         title: Row(
           children: [
-            Icon(Icons.warning_rounded, color: Colors.orange.shade700),
+            const Icon(Icons.warning_rounded, color: AppColors.accentOrange),
             const SizedBox(width: 12),
-            const Text('Сбросить пароль?'),
+            Text(
+              'Сбросить пароль?',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Это удалит ваш текущий пароль и все финансовые данные. Вы уверены?',
-          style: TextStyle(fontSize: 15),
+          style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: AppColors.textSecondary)),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.accentRed,
             ),
             child: const Text('Сбросить'),
           ),
@@ -182,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => const LockScreen(),
+            builder: (context) => LockScreen(onThemeChanged: widget.onThemeChanged),
           ),
               (route) => false,
         );
@@ -201,40 +177,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.deepPurple.shade600,
-        title: const Text(
+        backgroundColor: Colors.transparent,
+        title: Text(
           'Настройки',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: AppColors.textPrimary,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -245,26 +210,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _SectionHeader(
             icon: Icons.security_rounded,
             title: 'Безопасность',
+            color: AppColors.primary,
           ),
           const SizedBox(height: 12),
 
           // Биометрия
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
                 SwitchListTile(
                   value: _biometricEnabled,
                   onChanged: _biometricAvailable ? _toggleBiometric : null,
-                  title: const Text(
+                  title: Text(
                     'Вход по биометрии',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   subtitle: Text(
@@ -273,22 +240,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : 'Биометрия недоступна на устройстве',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   secondary: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.shade50,
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.fingerprint_rounded,
-                      color: Colors.deepPurple.shade600,
+                      color: AppColors.primary,
                       size: 24,
                     ),
                   ),
-                  activeColor: Colors.deepPurple.shade600,
+                  activeColor: AppColors.primary,
                 ),
               ],
             ),
@@ -300,14 +267,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _SectionHeader(
             icon: Icons.palette_rounded,
             title: 'Внешний вид',
+            color: AppColors.primary,
           ),
           const SizedBox(height: 12),
 
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
@@ -317,14 +285,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isSelected: _themeMode == 'light',
                   onTap: () => _changeTheme('light'),
                 ),
-                Divider(height: 1, color: Colors.grey.shade200),
+                Divider(height: 1, color: AppColors.border),
                 _ThemeTile(
                   icon: Icons.dark_mode_rounded,
                   title: 'Темная тема',
                   isSelected: _themeMode == 'dark',
                   onTap: () => _changeTheme('dark'),
                 ),
-                Divider(height: 1, color: Colors.grey.shade200),
+                Divider(height: 1, color: AppColors.border),
                 _ThemeTile(
                   icon: Icons.brightness_auto_rounded,
                   title: 'Системная тема',
@@ -341,14 +309,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _SectionHeader(
             icon: Icons.storage_rounded,
             title: 'Данные',
+            color: AppColors.primary,
           ),
           const SizedBox(height: 12),
 
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
@@ -356,33 +325,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: AppColors.accentBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.backup_rounded,
-                      color: Colors.blue.shade600,
+                      color: AppColors.accentBlue,
                       size: 24,
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Backup & Restore',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   subtitle: Text(
                     'Резервное копирование',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   trailing: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
-                    color: Colors.grey.shade400,
+                    color: AppColors.textMuted,
                   ),
                   onTap: _openBackup,
                 ),
@@ -396,26 +366,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _SectionHeader(
             icon: Icons.warning_rounded,
             title: 'Опасная зона',
-            color: Colors.red,
+            color: AppColors.accentRed,
           ),
           const SizedBox(height: 12),
 
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade200),
+              border: Border.all(color: AppColors.accentRed.withValues(alpha: 0.3)),
             ),
             child: ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: AppColors.accentRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.delete_forever_rounded,
-                  color: Colors.red.shade600,
+                  color: AppColors.accentRed,
                   size: 24,
                 ),
               ),
@@ -424,20 +394,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Colors.red,
+                  color: AppColors.accentRed,
                 ),
               ),
               subtitle: Text(
                 'Удалить пароль и все данные',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textSecondary,
                 ),
               ),
               trailing: Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 16,
-                color: Colors.red.shade400,
+                color: AppColors.accentRed.withValues(alpha: 0.5),
               ),
               onTap: _resetPassword,
             ),
@@ -452,14 +422,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icon(
                   Icons.shield_rounded,
                   size: 48,
-                  color: Colors.deepPurple.shade300,
+                  color: AppColors.primary.withValues(alpha: 0.7),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'CashGuard',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -467,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Версия 1.0.0',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -475,7 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Защита ваших финансов',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade500,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ],
@@ -492,28 +463,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
-  final Color? color;
+  final Color color;
 
   const _SectionHeader({
     required this.icon,
     required this.title,
-    this.color,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? Colors.deepPurple.shade600;
-
     return Row(
       children: [
-        Icon(icon, color: effectiveColor, size: 20),
+        Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: effectiveColor,
+            color: color,
           ),
         ),
       ],
@@ -541,15 +510,13 @@ class _ThemeTile extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.deepPurple.shade50
-              : Colors.grey.shade50,
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.textMuted.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           icon,
-          color: isSelected
-              ? Colors.deepPurple.shade600
-              : Colors.grey.shade600,
+          color: isSelected ? AppColors.primary : AppColors.textMuted,
           size: 24,
         ),
       ),
@@ -558,13 +525,13 @@ class _ThemeTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 15,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: isSelected ? Colors.deepPurple.shade600 : Colors.black87,
+          color: isSelected ? AppColors.primary : AppColors.textPrimary,
         ),
       ),
       trailing: isSelected
-          ? Icon(
+          ? const Icon(
         Icons.check_circle_rounded,
-        color: Colors.deepPurple.shade600,
+        color: AppColors.primary,
         size: 24,
       )
           : null,

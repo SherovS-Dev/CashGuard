@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/debt.dart';
 import '../services/secure_storage_service.dart';
+import '../constants/app_theme.dart';
 import 'add_debt_screen.dart';
 
 class DebtsScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
   }
 
   String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
   Future<void> _addDebt() async {
@@ -153,7 +153,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               decoration: InputDecoration(
                 labelText: 'Сумма платежа',
                 hintText: '0.00',
-                suffixText: '₽',
+                suffixText: 'ЅМ',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -389,42 +389,32 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.deepPurple.shade700,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
-              ),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.deepPurple.shade700,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: AppColors.primaryGradient),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
           onPressed: _addDebt,
-          backgroundColor: Colors.deepPurple.shade600,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           icon: const Icon(Icons.add_rounded, color: Colors.white),
           label: const Text(
             'Добавить долг',
@@ -434,175 +424,163 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
             ),
           ),
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
+      ),
+      body: Column(
+        children: [
+          // App Bar (extends to status bar)
+          Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              right: 16,
+              bottom: 12,
             ),
-          ),
-          child: Column(
-            children: [
-              // App Bar (extends to status bar)
-              Container(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 12,
-                  left: 16,
-                  right: 16,
-                  bottom: 12,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.deepPurple.shade400,
-                      Colors.deepPurple.shade700,
-                    ],
-                  ),
-                ),
-                child: Column(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryDark,
+                ],
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                          padding: EdgeInsets.zero, // ДОБАВЛЕНО
-                          constraints: const BoxConstraints(), // ДОБАВЛЕНО
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.account_balance_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Долги и кредиты',
-                                style: TextStyle(
-                                  fontSize: 20, // ИЗМЕНЕНО с 22
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Управление долгами',
-                                style: TextStyle(
-                                  fontSize: 12, // ИЗМЕНЕНО с 13
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(height: 16), // ИЗМЕНЕНО с 20
-                    // Summary Cards
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SummaryCard(
-                            title: 'Мне должны',
-                            amount: _formatCurrency(_getTotalRemaining(_borrowedDebts)),
-                            color: Colors.green,
-                            icon: Icons.arrow_downward_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SummaryCard(
-                            title: 'Я должен',
-                            amount: _formatCurrency(
-                              _getTotalRemaining(_lentDebts) + _getTotalRemaining(_credits),
-                            ),
-                            color: Colors.red,
-                            icon: Icons.arrow_upward_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Modern TabBar
+                    const SizedBox(width: 8),
                     Container(
-                      height: 45,
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: TabBar(
-                        controller: _tabController,
-                        indicator: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+                      child: const Icon(
+                        Icons.account_balance_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Долги и кредиты',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-                          ],
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: Colors.deepPurple.shade700,
-                        unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
-                        labelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.3,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
-                        ),
-                        splashFactory: NoSplash.splashFactory,
-                        overlayColor: WidgetStateProperty.all(Colors.transparent),
-                        tabs: const [
-                          Tab(text: 'Мне должны'),
-                          Tab(text: 'Я должен'),
-                          Tab(text: 'Кредиты'),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Управление долгами',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
                   ],
                 ),
-              ),
-
-              // Tab Views
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
+                const SizedBox(height: 16),
+                // Summary Cards
+                Row(
                   children: [
-                    _buildDebtList(_borrowedDebts, Colors.green),
-                    _buildDebtList(_lentDebts, Colors.orange),
-                    _buildDebtList(_credits, Colors.red),
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'Мне должны',
+                        amount: _formatCurrency(_getTotalRemaining(_borrowedDebts)),
+                        color: AppColors.accentGreen,
+                        icon: Icons.arrow_downward_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'Я должен',
+                        amount: _formatCurrency(
+                          _getTotalRemaining(_lentDebts) + _getTotalRemaining(_credits),
+                        ),
+                        color: AppColors.accentRed,
+                        icon: Icons.arrow_upward_rounded,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                // Modern TabBar
+                Container(
+                  height: 45,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: AppColors.primaryDark,
+                    unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+                    labelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                    splashFactory: NoSplash.splashFactory,
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    tabs: const [
+                      Tab(text: 'Мне должны'),
+                      Tab(text: 'Я должен'),
+                      Tab(text: 'Кредиты'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ),
+
+          // Tab Views
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDebtList(_borrowedDebts, AppColors.accentGreen),
+                _buildDebtList(_lentDebts, AppColors.accentOrange),
+                _buildDebtList(_credits, AppColors.accentRed),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -618,7 +596,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               Icon(
                 Icons.folder_open_rounded,
                 size: 64,
-                color: Colors.grey.shade300,
+                color: AppColors.textMuted,
               ),
               const SizedBox(height: 16),
               Text(
@@ -626,7 +604,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -634,7 +612,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                 'Нажмите + чтобы добавить',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade500,
+                  color: AppColors.textMuted,
                 ),
               ),
             ],
@@ -1097,7 +1075,7 @@ class _DebtCard extends StatelessWidget {
   });
 
   String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
   @override
@@ -1109,19 +1087,9 @@ class _DebtCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16), // ИЗМЕНЕНО с 20
-          border: Border.all( // ДОБАВЛЕНО
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade200, // ИЗМЕНЕНО
-              blurRadius: 8, // ИЗМЕНЕНО с 10
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
@@ -1156,19 +1124,20 @@ class _DebtCard extends StatelessWidget {
                           children: [
                             Text(
                               debt.description,
-                              style: const TextStyle(
-                                fontSize: 16, // ИЗМЕНЕНО с 18
+                              style: TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 2), // ИЗМЕНЕНО с 4
+                            const SizedBox(height: 2),
                             Text(
                               debt.creditorDebtor,
                               style: TextStyle(
-                                fontSize: 13, // ИЗМЕНЕНО с 14
-                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1177,7 +1146,7 @@ class _DebtCard extends StatelessWidget {
                         ),
                       ),
                       PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert_rounded, color: Colors.grey.shade600, size: 20), // ИЗМЕНЕНО
+                        icon: Icon(Icons.more_vert_rounded, color: AppColors.textSecondary, size: 20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1280,7 +1249,7 @@ class _DebtCard extends StatelessWidget {
 
                   const SizedBox(height: 16), // ИЗМЕНЕНО с 20
 
-                  // Amount Info - КОМПАКТНЕЕ
+                  // Amount Info
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1290,15 +1259,15 @@ class _DebtCard extends StatelessWidget {
                           Text(
                             'Остаток',
                             style: TextStyle(
-                              fontSize: 12, // ИЗМЕНЕНО с 13
-                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             _formatCurrency(debt.remainingWithInterest),
                             style: TextStyle(
-                              fontSize: 20, // ИЗМЕНЕНО с 24
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: accentColor,
                             ),
@@ -1307,21 +1276,21 @@ class _DebtCard extends StatelessWidget {
                       ),
                       if (debt.interestRate > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // ИЗМЕНЕНО
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(8), // ИЗМЕНЕНО с 10
-                            border: Border.all(color: Colors.orange.shade200),
+                            color: AppColors.accentOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.percent_rounded, color: Colors.orange.shade700, size: 14), // ИЗМЕНЕНО с 16
+                              const Icon(Icons.percent_rounded, color: AppColors.accentOrange, size: 14),
                               Text(
                                 '${debt.interestRate.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 11, // ИЗМЕНЕНО с 12
+                                style: const TextStyle(
+                                  fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.orange.shade700,
+                                  color: AppColors.accentOrange,
                                 ),
                               ),
                             ],
@@ -1331,8 +1300,8 @@ class _DebtCard extends StatelessWidget {
                   ),
 
                   if (!isPaid) ...[
-                    const SizedBox(height: 12), // ИЗМЕНЕНО с 16
-                    // Progress Bar - СДЕЛАЛИ ШИРЕ
+                    const SizedBox(height: 12),
+                    // Progress Bar
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1342,27 +1311,27 @@ class _DebtCard extends StatelessWidget {
                             Text(
                               'Выплачено: ${_formatCurrency(debt.paidAmount)}',
                               style: TextStyle(
-                                fontSize: 11, // ИЗМЕНЕНО с 12
-                                color: Colors.grey.shade600,
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                             Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
                               style: TextStyle(
-                                fontSize: 11, // ИЗМЕНЕНО с 12
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade700,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6), // ИЗМЕНЕНО с 8
+                        const SizedBox(height: 6),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
                             value: progress,
-                            minHeight: 10, // УВЕЛИЧЕНО с 8 - ТЕПЕРЬ ШИРЕ!
-                            backgroundColor: Colors.grey.shade200,
+                            minHeight: 10,
+                            backgroundColor: AppColors.surface,
                             valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                           ),
                         ),
@@ -1372,20 +1341,20 @@ class _DebtCard extends StatelessWidget {
 
                   // Due Date
                   if (debt.dueDate != null) ...[
-                    const SizedBox(height: 12), // ИЗМЕНЕНО с 16
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Icon(
                           Icons.calendar_today_rounded,
-                          size: 14, // ИЗМЕНЕНО с 16
-                          color: debt.isOverdue ? Colors.red.shade700 : Colors.grey.shade600,
+                          size: 14,
+                          color: debt.isOverdue ? AppColors.accentRed : AppColors.textSecondary,
                         ),
-                        const SizedBox(width: 6), // ИЗМЕНЕНО с 8
+                        const SizedBox(width: 6),
                         Text(
                           'До ${debt.dueDate!.day}.${debt.dueDate!.month}.${debt.dueDate!.year}',
                           style: TextStyle(
-                            fontSize: 12, // ИЗМЕНЕНО с 13
-                            color: debt.isOverdue ? Colors.red.shade700 : Colors.grey.shade600,
+                            fontSize: 12,
+                            color: debt.isOverdue ? AppColors.accentRed : AppColors.textSecondary,
                             fontWeight: debt.isOverdue ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
@@ -1396,30 +1365,30 @@ class _DebtCard extends StatelessWidget {
               ),
             ),
 
-            // Add Payment Button - КОМПАКТНЕЕ
+            // Add Payment Button
             if (onAddPayment != null)
               Container(
                 decoration: BoxDecoration(
                   border: Border(
-                    top: BorderSide(color: Colors.grey.shade200, width: 1),
+                    top: BorderSide(color: AppColors.border),
                   ),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: onAddPayment,
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), // ИЗМЕНЕНО
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12), // ИЗМЕНЕНО с 14
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_circle_outline_rounded, color: accentColor, size: 18), // ИЗМЕНЕНО с 20
+                          Icon(Icons.add_circle_outline_rounded, color: accentColor, size: 18),
                           const SizedBox(width: 8),
                           Text(
                             'Добавить платеж',
                             style: TextStyle(
-                              fontSize: 14, // ИЗМЕНЕНО с 15
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: accentColor,
                             ),

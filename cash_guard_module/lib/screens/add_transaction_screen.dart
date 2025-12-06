@@ -43,9 +43,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       onPhoneShake: (_) {
         _toggleHiddenFundsVisibility();
       },
-      minimumShakeCount: 3,
-      shakeSlopTimeMS: 500,
-      shakeCountResetTime: 2000,
+      minimumShakeCount: 3, // 3 быстрые тряски
+      shakeSlopTimeMS: 300, // Быстрая реакция
+      shakeCountResetTime: 800, // За 800 миллисекунд
       shakeThresholdGravity: 2.5,
     );
   }
@@ -58,13 +58,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     // Вибрация
     HapticFeedback.mediumImpact();
 
-    // Показываем скрытые средства (они останутся до обновления страницы)
+    // Показываем скрытые средства
     setState(() {
       _showHiddenFunds = true;
     });
 
     // Перезагружаем список средств с учетом скрытых
     _loadLocations();
+
+    // Показываем уведомление
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('🔓 Скрытые средства показаны'),
+        backgroundColor: Colors.orange.shade700,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -235,6 +244,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               id: loc.id,
               name: loc.name,
               amount: loc.amount + amountChange,
+              isHidden: loc.isHidden, // Сохраняем статус скрытости
             );
           }
           return loc;
@@ -266,6 +276,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               cardNumber: card.cardNumber,
               balance: card.balance + amountChange,
               bankName: card.bankName,
+              isHidden: card.isHidden, // Сохраняем статус скрытости
             );
           }
           return card;
@@ -286,6 +297,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               name: wallet.name,
               phoneNumber: wallet.phoneNumber,
               balance: wallet.balance + amountChange,
+              isHidden: wallet.isHidden, // Сохраняем статус скрытости
             );
           }
           return wallet;
@@ -538,7 +550,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                   : Colors.red,
                               size: 32,
                             ),
-                            suffixText: '₽',
+                            suffixText: 'ЅМ',
                             suffixStyle: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,

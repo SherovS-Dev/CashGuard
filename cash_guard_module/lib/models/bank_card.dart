@@ -4,6 +4,7 @@ class BankCard {
   final double balance;
   final String? bankName;
   final bool isHidden;
+  final int colorIndex; // Индекс цвета из палитры
 
   BankCard({
     required this.cardName,
@@ -11,6 +12,7 @@ class BankCard {
     required this.balance,
     this.bankName,
     this.isHidden = false,
+    this.colorIndex = 0,
   });
 
   String get maskedCardNumber {
@@ -25,6 +27,7 @@ class BankCard {
       'balance': balance,
       'bankName': bankName,
       'isHidden': isHidden,
+      'colorIndex': colorIndex,
     };
   }
 
@@ -35,6 +38,7 @@ class BankCard {
       balance: (json['balance'] ?? 0).toDouble(),
       bankName: json['bankName'],
       isHidden: json['isHidden'] ?? false,
+      colorIndex: json['colorIndex'] ?? 0,
     );
   }
 
@@ -44,6 +48,7 @@ class BankCard {
     double? balance,
     String? bankName,
     bool? isHidden,
+    int? colorIndex,
   }) {
     return BankCard(
       cardName: cardName ?? this.cardName,
@@ -51,6 +56,7 @@ class BankCard {
       balance: balance ?? this.balance,
       bankName: bankName ?? this.bankName,
       isHidden: isHidden ?? this.isHidden,
+      colorIndex: colorIndex ?? this.colorIndex,
     );
   }
 }

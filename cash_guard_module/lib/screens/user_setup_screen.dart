@@ -6,11 +6,15 @@ import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import '../services/backup_service.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
 import '../models/user.dart';
+import '../widgets/color_picker_widget.dart';
+import '../constants/color_palettes.dart';
 
 class UserSetupScreen extends StatefulWidget {
-  const UserSetupScreen({super.key});
+  final Function(ThemeMode)? onThemeChanged;
+
+  const UserSetupScreen({super.key, this.onThemeChanged});
 
   @override
   State<UserSetupScreen> createState() => _UserSetupScreenState();
@@ -105,15 +109,16 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                 (loc) => loc.name == 'Наличные в руке',
             orElse: () => user.cashLocations.first,
           );
-          _cashInHandController.text = mainCash.amount.toString();
+          _cashInHandController.text = mainCash.amount.toStringAsFixed(2);
 
           // Загружаем остальные места
           for (var location in user.cashLocations) {
             if (location.name != 'Наличные в руке') {
               final locInput = CashLocationInput();
               locInput.nameController.text = location.name;
-              locInput.amountController.text = location.amount.toString();
+              locInput.amountController.text = location.amount.toStringAsFixed(2);
               locInput.isHidden = location.isHidden;
+              locInput.colorIndex = location.colorIndex;
               _cashLocations.add(locInput);
             }
           }
@@ -124,9 +129,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           final cardInput = BankCardInput();
           cardInput.nameController.text = card.cardName;
           cardInput.numberController.text = card.cardNumber;
-          cardInput.balanceController.text = card.balance.toString();
+          cardInput.balanceController.text = card.balance.toStringAsFixed(2);
           cardInput.bankController.text = card.bankName ?? '';
           cardInput.isHidden = card.isHidden;
+          cardInput.colorIndex = card.colorIndex;
           _bankCards.add(cardInput);
         }
 
@@ -135,8 +141,9 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           final walletInput = MobileWalletInput();
           walletInput.nameController.text = wallet.name;
           walletInput.phoneController.text = wallet.phoneNumber;
-          walletInput.balanceController.text = wallet.balance.toString();
+          walletInput.balanceController.text = wallet.balance.toStringAsFixed(2);
           walletInput.isHidden = wallet.isHidden;
+          walletInput.colorIndex = wallet.colorIndex;
           _mobileWallets.add(walletInput);
         }
       });
@@ -172,7 +179,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
   void _addBankCard() {
     setState(() {
-      _bankCards.add(BankCardInput());
+      final newCard = BankCardInput();
+      // Устанавливаем цвет для новой карты (следующий цвет из палитры)
+      newCard.colorIndex = (_bankCards.length + 1) % ColorPalettes.count;
+      _bankCards.add(newCard);
     });
   }
 
@@ -185,7 +195,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
   void _addCashLocation() {
     setState(() {
-      _cashLocations.add(CashLocationInput());
+      final newLocation = CashLocationInput();
+      // Устанавливаем цвет для нового места (следующий цвет из палитры, смещение на 4)
+      newLocation.colorIndex = (_cashLocations.length + 4) % ColorPalettes.count;
+      _cashLocations.add(newLocation);
     });
   }
 
@@ -198,7 +211,10 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
   void _addMobileWallet() {
     setState(() {
-      _mobileWallets.add(MobileWalletInput());
+      final newWallet = MobileWalletInput();
+      // Устанавливаем цвет для нового кошелька (следующий цвет из палитры, смещение на 8)
+      newWallet.colorIndex = (_mobileWallets.length + 8) % ColorPalettes.count;
+      _mobileWallets.add(newWallet);
     });
   }
 
@@ -254,7 +270,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
               decoration: InputDecoration(
                 labelText: 'Наличные в руке',
                 hintText: '0.00',
-                suffixText: '₽',
+                suffixText: 'ЅМ',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -369,7 +385,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                   // Переходим на главный экран
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
-                      builder: (context) => const HomeScreen(),
+                      builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
                     ),
                   );
                 },
@@ -421,6 +437,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       id: 'main_cash',
       name: 'Наличные в руке',
       amount: mainCash,
+      colorIndex: 0, // Основные наличные всегда первый цвет
     ));
 
     // Добавляем дополнительные места
@@ -431,6 +448,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         name: location.nameController.text.trim(),
         amount: double.tryParse(location.amountController.text) ?? 0,
         isHidden: location.isHidden,
+        colorIndex: location.colorIndex,
       ));
     }
 
@@ -444,6 +462,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
             ? null
             : input.bankController.text.trim(),
         isHidden: input.isHidden,
+        colorIndex: input.colorIndex,
       );
     }).toList();
 
@@ -454,6 +473,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
         phoneNumber: input.phoneController.text.trim(),
         balance: double.tryParse(input.balanceController.text) ?? 0,
         isHidden: input.isHidden,
+        colorIndex: input.colorIndex,
       );
     }).toList();
 
@@ -479,7 +499,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
       // В режиме создания переходим на главный экран
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
+          builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
         ),
       );
     }
@@ -921,7 +941,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            'Наличные: ${(double.tryParse(_cashInHandController.text) ?? 0.0).toStringAsFixed(2)} ₽',
+                                            'Наличные: ${(double.tryParse(_cashInHandController.text) ?? 0.0).toStringAsFixed(2)} ЅМ',
                                             style: const TextStyle(
                                               fontSize: 14,
                                               color: Colors.white70,
@@ -1559,6 +1579,7 @@ class CashLocationInput {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
   bool isHidden = false;
+  int colorIndex = 0;
 
   void dispose() {
     nameController.dispose();
@@ -1607,35 +1628,22 @@ class _CashLocationFormState extends State<_CashLocationForm> {
       onTap: () => _showEditDialog(),
       child: Container(
         decoration: BoxDecoration(
-          gradient: widget.isTemporarilyVisible
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.orange.shade300,
-                    Colors.orange.shade500,
-                  ],
-                )
-              : LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.orange.shade400,
-                    Colors.orange.shade600,
-                  ],
-                ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: ColorPalettes.getGradient(widget.locationInput.colorIndex),
+          ),
           borderRadius: BorderRadius.circular(20),
           border: widget.isTemporarilyVisible
               ? Border.all(
-                  color: Colors.orange.shade700,
+                  color: ColorPalettes.getGradient(widget.locationInput.colorIndex)[1],
                   width: 3,
                 )
               : null,
           boxShadow: [
             BoxShadow(
-              color: widget.isTemporarilyVisible
-                  ? Colors.orange.shade400.withValues(alpha: 0.7)
-                  : Colors.orange.shade300.withValues(alpha: 0.5),
+              color: ColorPalettes.getGradient(widget.locationInput.colorIndex)[0]
+                  .withValues(alpha: widget.isTemporarilyVisible ? 0.7 : 0.5),
               blurRadius: widget.isTemporarilyVisible ? 20 : 15,
               offset: const Offset(0, 8),
             ),
@@ -1698,7 +1706,7 @@ class _CashLocationFormState extends State<_CashLocationForm> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '${amount.toStringAsFixed(2)} ₽',
+                  '${amount.toStringAsFixed(2)} ЅМ',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -1758,36 +1766,49 @@ class _CashLocationFormState extends State<_CashLocationForm> {
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: widget.locationInput.nameController,
-                decoration: InputDecoration(
-                  labelText: 'Название места',
-                  hintText: 'Например: В сейфе',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: widget.locationInput.nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Название места',
+                    hintText: 'Например: В сейфе',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: widget.locationInput.amountController,
-                decoration: InputDecoration(
-                  labelText: 'Сумма',
-                  hintText: '0.00',
-                  suffixText: '₽',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: widget.locationInput.amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Сумма',
+                    hintText: '0.00',
+                    suffixText: 'ЅМ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-              ),
-            ],
+                const SizedBox(height: 20),
+                ColorPickerWidget(
+                  selectedColorIndex: widget.locationInput.colorIndex,
+                  onColorSelected: (index) {
+                    setDialogState(() {
+                      setState(() {
+                        widget.locationInput.colorIndex = index;
+                      });
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1834,6 +1855,7 @@ class BankCardInput {
   final TextEditingController balanceController = TextEditingController();
   final TextEditingController bankController = TextEditingController();
   bool isHidden = false;
+  int colorIndex = 0;
 
   void dispose() {
     nameController.dispose();
@@ -1848,6 +1870,7 @@ class MobileWalletInput {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController balanceController = TextEditingController();
   bool isHidden = false;
+  int colorIndex = 0;
 
   void dispose() {
     nameController.dispose();
@@ -1875,19 +1898,9 @@ class _ModernBankCardForm extends StatefulWidget {
 
 class _ModernBankCardFormState extends State<_ModernBankCardForm> {
 
-  List<List<Color>> _getCardGradients() {
-    return [
-      [const Color(0xFF667eea), const Color(0xFF764ba2)],
-      [const Color(0xFFf093fb), const Color(0xFFf5576c)],
-      [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
-      [const Color(0xFF43e97b), const Color(0xFF38f9d7)],
-      [const Color(0xFFfa709a), const Color(0xFFfee140)],
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final colors = _getCardGradients()[widget.index % _getCardGradients().length];
+    final colors = ColorPalettes.getGradient(widget.cardInput.colorIndex);
     final cardName = widget.cardInput.nameController.text.isEmpty
         ? 'Карта ${widget.index + 1}'
         : widget.cardInput.nameController.text;
@@ -2014,7 +2027,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${balance.toStringAsFixed(2)} ₽',
+                      '${balance.toStringAsFixed(2)} ЅМ',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -2032,8 +2045,6 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
   }
 
   void _showEditDialog() {
-    final colors = _getCardGradients()[widget.index % _getCardGradients().length];
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -2044,7 +2055,9 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: colors),
+                  gradient: LinearGradient(
+                    colors: ColorPalettes.getGradient(widget.cardInput.colorIndex),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 24),
@@ -2070,7 +2083,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                       : Icons.visibility_rounded,
                   color: widget.cardInput.isHidden
                       ? Colors.grey.shade400
-                      : colors[0],
+                      : ColorPalettes.getGradient(widget.cardInput.colorIndex)[0],
                 ),
               ),
             ],
@@ -2122,7 +2135,7 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                   decoration: InputDecoration(
                     labelText: 'Баланс',
                     hintText: '0.00',
-                    suffixText: '₽',
+                    suffixText: 'ЅМ',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -2131,6 +2144,17 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                   ],
+                ),
+                const SizedBox(height: 20),
+                ColorPickerWidget(
+                  selectedColorIndex: widget.cardInput.colorIndex,
+                  onColorSelected: (index) {
+                    setDialogState(() {
+                      setState(() {
+                        widget.cardInput.colorIndex = index;
+                      });
+                    });
+                  },
                 ),
               ],
             ),
@@ -2147,7 +2171,9 @@ class _ModernBankCardFormState extends State<_ModernBankCardForm> {
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: colors),
+                gradient: LinearGradient(
+                  colors: ColorPalettes.getGradient(widget.cardInput.colorIndex),
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ElevatedButton(
@@ -2191,19 +2217,9 @@ class _MobileWalletForm extends StatefulWidget {
 
 class _MobileWalletFormState extends State<_MobileWalletForm> {
 
-  List<List<Color>> _getWalletGradients() {
-    return [
-      [const Color(0xFF11998e), const Color(0xFF38ef7d)],
-      [const Color(0xFF2193b0), const Color(0xFF6dd5ed)],
-      [const Color(0xFFee0979), const Color(0xFFff6a00)],
-      [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],
-      [const Color(0xFFffa751), const Color(0xFFffe259)],
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final colors = _getWalletGradients()[widget.index % _getWalletGradients().length];
+    final colors = ColorPalettes.getGradient(widget.walletInput.colorIndex);
     final walletName = widget.walletInput.nameController.text.isEmpty
         ? 'Кошелек ${widget.index + 1}'
         : widget.walletInput.nameController.text;
@@ -2342,7 +2358,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${balance.toStringAsFixed(2)} ₽',
+                      '${balance.toStringAsFixed(2)} ЅМ',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -2361,8 +2377,6 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
   }
 
   void _showEditDialog() {
-    final colors = _getWalletGradients()[widget.index % _getWalletGradients().length];
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -2373,7 +2387,9 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: colors),
+                  gradient: LinearGradient(
+                    colors: ColorPalettes.getGradient(widget.walletInput.colorIndex),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.phone_android_rounded, color: Colors.white, size: 24),
@@ -2399,7 +2415,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                       : Icons.visibility_rounded,
                   color: widget.walletInput.isHidden
                       ? Colors.grey.shade400
-                      : colors[0],
+                      : ColorPalettes.getGradient(widget.walletInput.colorIndex)[0],
                 ),
               ),
             ],
@@ -2435,7 +2451,7 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                 decoration: InputDecoration(
                   labelText: 'Баланс',
                   hintText: '0.00',
-                  suffixText: '₽',
+                  suffixText: 'ЅМ',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -2444,6 +2460,17 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                 ],
+              ),
+              const SizedBox(height: 20),
+              ColorPickerWidget(
+                selectedColorIndex: widget.walletInput.colorIndex,
+                onColorSelected: (index) {
+                  setDialogState(() {
+                    setState(() {
+                      widget.walletInput.colorIndex = index;
+                    });
+                  });
+                },
               ),
             ],
           ),
@@ -2459,7 +2486,9 @@ class _MobileWalletFormState extends State<_MobileWalletForm> {
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: colors),
+                gradient: LinearGradient(
+                  colors: ColorPalettes.getGradient(widget.walletInput.colorIndex),
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ElevatedButton(

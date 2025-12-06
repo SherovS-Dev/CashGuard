@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/cash_guard_module/cash_guard_module.iml" filepath="$PROJECT_DIR$/cash_guard_module/cash_guard_module.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cash_guard_module/android/cash_guard_module_android.iml" filepath="$PROJECT_DIR$/cash_guard_module/android/cash_guard_module_android.iml" />
     </modules>
   </component>
 </project>

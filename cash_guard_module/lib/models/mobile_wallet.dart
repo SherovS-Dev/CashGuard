@@ -2,13 +2,15 @@ class MobileWallet {
   final String name;
   final String phoneNumber;
   final double balance;
-  final bool isHidden; // ДОБАВЛЕНО
+  final bool isHidden;
+  final int colorIndex; // Индекс цвета из палитры
 
   MobileWallet({
     required this.name,
     required this.phoneNumber,
     required this.balance,
     this.isHidden = false,
+    this.colorIndex = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -17,6 +19,7 @@ class MobileWallet {
       'phoneNumber': phoneNumber,
       'balance': balance,
       'isHidden': isHidden,
+      'colorIndex': colorIndex,
     };
   }
 
@@ -26,6 +29,7 @@ class MobileWallet {
       phoneNumber: json['phoneNumber'] ?? '',
       balance: (json['balance'] ?? 0).toDouble(),
       isHidden: json['isHidden'] ?? false,
+      colorIndex: json['colorIndex'] ?? 0,
     );
   }
 
@@ -34,12 +38,14 @@ class MobileWallet {
     String? phoneNumber,
     double? balance,
     bool? isHidden,
+    int? colorIndex,
   }) {
     return MobileWallet(
       name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       balance: balance ?? this.balance,
       isHidden: isHidden ?? this.isHidden,
+      colorIndex: colorIndex ?? this.colorIndex,
     );
   }
 }

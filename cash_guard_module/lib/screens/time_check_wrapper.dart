@@ -6,7 +6,9 @@ import '../widgets/time_check_error.dart';
 
 /// Обертка для проверки времени перед показом основного экрана
 class TimeCheckWrapper extends StatefulWidget {
-  const TimeCheckWrapper({super.key});
+  final Function(ThemeMode)? onThemeChanged;
+
+  const TimeCheckWrapper({super.key, this.onThemeChanged});
 
   @override
   State<TimeCheckWrapper> createState() => _TimeCheckWrapperState();
@@ -45,7 +47,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const LockScreen(),
+            builder: (context) => LockScreen(onThemeChanged: widget.onThemeChanged),
           ),
         );
       }
@@ -59,7 +61,7 @@ class _TimeCheckWrapperState extends State<TimeCheckWrapper> {
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => const LockScreen(),
+        builder: (context) => LockScreen(onThemeChanged: widget.onThemeChanged),
       ),
     );
   }

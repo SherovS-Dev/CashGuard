@@ -3,19 +3,22 @@ import 'package:flutter/services.dart';
 import '../services/secure_storage_service.dart';
 import '../constants/app_theme.dart';
 
-class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
+class StatisticsTab extends StatefulWidget {
+  const StatisticsTab({super.key});
 
   @override
-  State<StatisticsScreen> createState() => _StatisticsScreenState();
+  State<StatisticsTab> createState() => StatisticsTabState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
+class StatisticsTabState extends State<StatisticsTab> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final _storageService = SecureStorageService();
   late TabController _tabController;
   Map<String, dynamic> _monthlySnapshots = {};
   Map<String, dynamic> _yearlySnapshots = {};
   bool _isLoading = true;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -30,15 +33,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     super.dispose();
   }
 
+  // Публичный метод для обновления данных
+  Future<void> refresh() async {
+    await _loadSnapshots();
+  }
+
   Future<void> _loadSnapshots() async {
     final monthly = await _storageService.getMonthlySnapshots();
     final yearly = await _storageService.getYearlySnapshots();
 
-    setState(() {
-      _monthlySnapshots = monthly;
-      _yearlySnapshots = yearly;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _monthlySnapshots = monthly;
+        _yearlySnapshots = yearly;
+        _isLoading = false;
+      });
+    }
   }
 
   String _formatCurrency(double amount) {
@@ -47,12 +57,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
@@ -62,113 +71,101 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          bottom: true,
-          child: Column(
-            children: [
-              // Header with gradient background
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primaryDark,
-                    ],
-                  ),
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Column(
+      child: Column(
+        children: [
+          // Header with gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryDark,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Column(
+                  children: [
+                    // Title
+                    const Row(
                       children: [
-                        // Title and back button
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            const Expanded(
-                              child: Text(
-                                'Статистика',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+                        Text(
+                          'Статистика',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Modern TabBar
+                    Container(
+                      height: 45,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                        // Modern TabBar
-                        Container(
-                          height: 45,
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: TabBar(
-                            controller: _tabController,
-                            indicator: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            dividerColor: Colors.transparent,
-                            labelColor: AppColors.primaryDark,
-                            unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
-                            labelStyle: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.3,
-                            ),
-                            unselectedLabelStyle: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                            ),
-                            splashFactory: NoSplash.splashFactory,
-                            overlayColor: WidgetStateProperty.all(Colors.transparent),
-                            tabs: const [
-                              Tab(text: 'По месяцам'),
-                              Tab(text: 'По годам'),
-                            ],
-                          ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: AppColors.primaryDark,
+                        unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+                        labelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        overlayColor: WidgetStateProperty.all(Colors.transparent),
+                        tabs: const [
+                          Tab(text: 'По месяцам'),
+                          Tab(text: 'По годам'),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-
-              // Content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildMonthlyStats(),
-                    _buildYearlyStats(),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          // Content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildMonthlyStats(),
+                _buildYearlyStats(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -214,7 +211,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
       itemCount: sortedKeys.length,
       itemBuilder: (context, index) {
         final key = sortedKeys[index];
@@ -275,7 +272,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
       itemCount: sortedKeys.length,
       itemBuilder: (context, index) {
         final key = sortedKeys[index];

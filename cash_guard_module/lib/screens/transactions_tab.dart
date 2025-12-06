@@ -7,14 +7,14 @@ import '../models/user.dart';
 import '../services/secure_storage_service.dart';
 import '../constants/app_theme.dart';
 
-class TransactionsScreen extends StatefulWidget {
-  const TransactionsScreen({super.key});
+class TransactionsTab extends StatefulWidget {
+  const TransactionsTab({super.key});
 
   @override
-  State<TransactionsScreen> createState() => _TransactionsScreenState();
+  State<TransactionsTab> createState() => TransactionsTabState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliveClientMixin {
   final _storageService = SecureStorageService();
 
   List<Transaction> _transactions = [];
@@ -22,9 +22,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _isLoading = true;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  // Публичный метод для обновления данных
+  Future<void> refresh() async {
+    await _loadData();
   }
 
   Future<void> _loadData() async {
@@ -34,17 +42,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final transactions = await _storageService.getTransactions();
     final initialBalance = await _storageService.getInitialBalance();
 
-    setState(() {
-      _transactions = transactions..sort((a, b) => b.date.compareTo(a.date));
-      _initialBalance = initialBalance;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _transactions = transactions..sort((a, b) => b.date.compareTo(a.date));
+        _initialBalance = initialBalance;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _cleanOldTransactions() async {
     final transactions = await _storageService.getTransactions();
     final now = DateTime.now();
-    // Хранить транзакции за 3 месяца + 1 день
     final cutoffDate = DateTime(now.year, now.month - 3, now.day + 1);
 
     final filteredTransactions = transactions.where((t) {
@@ -322,7 +331,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           children: [
             Icon(Icons.warning_rounded, color: Colors.red.shade700),
             const SizedBox(width: 12),
-            const Expanded(child: Text('Удалить транзакцию?')), // ИСПРАВЛЕНО
+            const Expanded(child: Text('Удалить транзакцию?')),
           ],
         ),
         content: Text(
@@ -447,248 +456,194 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          // Основной контент
-          CustomScrollView(
-            slivers: [
-              // Хедер с градиентом
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.primary,
-                        AppColors.primaryDark,
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => Navigator.pop(context),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_back_rounded,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              const Text(
-                                'Транзакции',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Доходы',
-                                  amount: _formatCurrency(_totalIncome),
-                                  icon: Icons.arrow_downward_rounded,
-                                  color: AppColors.accentGreen,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Расходы',
-                                  amount: _formatCurrency(_totalExpenses),
-                                  icon: Icons.arrow_upward_rounded,
-                                  color: AppColors.accentRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+    return CustomScrollView(
+      slivers: [
+        // Хедер с градиентом
+        SliverToBoxAdapter(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryDark,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Транзакции',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.history_rounded, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'История (3 месяца)',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            title: 'Доходы',
+                            amount: _formatCurrency(_totalIncome),
+                            icon: Icons.arrow_downward_rounded,
+                            color: AppColors.accentGreen,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              if (_transactions.isEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Container(
-                      padding: const EdgeInsets.all(40),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBackground,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.receipt_long_rounded,
-                            size: 64,
-                            color: AppColors.textMuted,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            title: 'Расходы',
+                            amount: _formatCurrency(_totalExpenses),
+                            icon: Icons.arrow_upward_rounded,
+                            color: AppColors.accentRed,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Нет транзакций',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Добавьте первую транзакцию',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final transaction = _transactions[index];
-                        if (transaction.status == TransactionStatus.cancelled) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _TransactionCard(
-                              transaction: transaction,
-                              onCancel: null,
-                              onDelete: null,
-                            ),
-                          );
-                        }
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Dismissible(
-                            key: Key(transaction.id),
-                            direction: DismissDirection.endToStart,
-                            confirmDismiss: (_) async {
-                              await _deleteTransaction(transaction);
-                              return false;
-                            },
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              decoration: BoxDecoration(
-                                color: AppColors.accentRed,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.delete_rounded,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                            child: _TransactionCard(
-                              transaction: transaction,
-                              onCancel: transaction.canBeCancelled
-                                  ? () => _cancelTransaction(transaction)
-                                  : null,
-                              onDelete: () => _deleteTransaction(transaction),
-                            ),
-                          ),
-                        );
-                      },
-                      childCount: _transactions.length,
-                    ),
-                  ),
-                ),
-
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 100),
-              ),
-            ],
-          ),
-
-          // Размытие снизу (как в Samsung Clock)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    stops: const [0.0, 0.3, 0.6, 1.0],
-                    colors: [
-                      AppColors.background,
-                      AppColors.background.withValues(alpha: 0.95),
-                      AppColors.background.withValues(alpha: 0.6),
-                      AppColors.background.withValues(alpha: 0),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                const Icon(Icons.history_rounded, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'История (3 месяца)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        if (_transactions.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.receipt_long_rounded,
+                      size: 64,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Нет транзакций',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Добавьте первую транзакцию',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final transaction = _transactions[index];
+                  if (transaction.status == TransactionStatus.cancelled) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _TransactionCard(
+                        transaction: transaction,
+                        onCancel: null,
+                        onDelete: null,
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Dismissible(
+                      key: Key(transaction.id),
+                      direction: DismissDirection.endToStart,
+                      confirmDismiss: (_) async {
+                        await _deleteTransaction(transaction);
+                        return false;
+                      },
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentRed,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.delete_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      child: _TransactionCard(
+                        transaction: transaction,
+                        onCancel: transaction.canBeCancelled
+                            ? () => _cancelTransaction(transaction)
+                            : null,
+                        onDelete: () => _deleteTransaction(transaction),
+                      ),
+                    ),
+                  );
+                },
+                childCount: _transactions.length,
+              ),
+            ),
+          ),
+
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 140),
+        ),
+      ],
     );
   }
 }

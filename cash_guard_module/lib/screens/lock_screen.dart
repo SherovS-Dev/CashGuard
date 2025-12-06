@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/secure_storage_service.dart';
 import '../services/biometric_auth_service.dart';
 import 'user_setup_screen.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
 
 class LockScreen extends StatefulWidget {
-  const LockScreen({super.key});
+  final Function(ThemeMode)? onThemeChanged;
+
+  const LockScreen({super.key, this.onThemeChanged});
 
   @override
   State<LockScreen> createState() => _LockScreenState();
@@ -181,14 +183,14 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
       // Если данные есть, идем на главный экран
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
+          builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
         ),
       );
     } else {
       // Если данных нет, идем на экран настройки
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const UserSetupScreen(),
+          builder: (context) => UserSetupScreen(onThemeChanged: widget.onThemeChanged),
         ),
       );
     }

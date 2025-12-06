@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import '../models/cash_location.dart';
 import '../models/debt.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
+import '../constants/app_theme.dart';
 import 'debts_screen.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Debt> _debts = [];
   bool _showHiddenFunds = false;
   ShakeDetector? _shakeDetector;
+  int _currentIndex = 0;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -55,35 +58,36 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _toggleHiddenFundsVisibility();
       },
       minimumShakeCount: 3,
-      shakeSlopTimeMS: 500,
-      shakeCountResetTime: 2000,
+      shakeSlopTimeMS: 300,
+      shakeCountResetTime: 800,
       shakeThresholdGravity: 2.5,
     );
   }
 
   void _toggleHiddenFundsVisibility() {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    // Проверяем, есть ли скрытые средства
     final hasHiddenFunds = _user != null && (
       _user!.cashLocations.any((loc) => loc.isHidden) ||
       _user!.bankCards.any((card) => card.isHidden) ||
       _user!.mobileWallets.any((wallet) => wallet.isHidden)
     );
 
-    if (!hasHiddenFunds) {
-      return;
-    }
+    if (!hasHiddenFunds) return;
 
-    // Вибрация
     HapticFeedback.mediumImpact();
 
-    // Показываем скрытые средства (они останутся до обновления страницы)
     setState(() {
       _showHiddenFunds = true;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Скрытые средства показаны'),
+        backgroundColor: Colors.orange.shade700,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -106,34 +110,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _user = user;
       _debts = debts;
       _isLoading = false;
-      // Скрываем временно показанные средства при обновлении
       _showHiddenFunds = false;
     });
     _animationController.forward();
-  }
-
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
-  }
-
-  void _openStatistics() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const StatisticsScreen(),
-      ),
-    );
-  }
-
-  void _openDebts() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const DebtsScreen(),
-      ),
-    ).then((_) => _loadUserData());
   }
 
   Future<void> _resetPassword() async {
@@ -210,451 +189,512 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _openTransactions() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const TransactionsScreen(),
-      ),
-    );
+  String _formatCurrency(double amount) {
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
-  String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
+  void _onNavTap(int index) {
+    HapticFeedback.lightImpact();
+
+    if (index == _currentIndex) return;
+
+    switch (index) {
+      case 0: // Home - уже здесь
+        setState(() => _currentIndex = 0);
+        break;
+      case 1: // Statistics
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+        ).then((_) => setState(() => _currentIndex = 0));
+        break;
+      case 2: // Add Transaction (центральная кнопка)
+        _addTransaction();
+        break;
+      case 3: // Transactions
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const TransactionsScreen()),
+        ).then((_) => setState(() => _currentIndex = 0));
+        break;
+      case 4: // Debts
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const DebtsScreen()),
+        ).then((_) {
+          _loadUserData();
+          setState(() => _currentIndex = 0);
+        });
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+        backgroundColor: AppColors.background,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
     if (_user == null) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('CashGuard'),
+          backgroundColor: AppColors.background,
+          title: Text('CashGuard', style: TextStyle(color: AppColors.textPrimary)),
           actions: [
             IconButton(
-              icon: const Icon(Icons.lock_reset),
+              icon: Icon(Icons.lock_reset, color: AppColors.textPrimary),
               tooltip: 'Сбросить пароль',
               onPressed: _resetPassword,
             ),
           ],
         ),
-        body: const Center(
-          child: Text('Ошибка загрузки данных'),
+        body: Center(
+          child: Text('Ошибка загрузки данных', style: TextStyle(color: AppColors.textSecondary)),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.deepPurple.shade600,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Привет, ${_user!.name}! 👋',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              'Обзор ваших финансов',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart_rounded, color: Colors.white),
-            tooltip: 'Статистика',
-            onPressed: _openStatistics,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded, color: Colors.white),
-            tooltip: 'Настройки',
-            onPressed: _openSettings,
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: RefreshIndicator(
-          onRefresh: _loadUserData,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Общий баланс - компактная карточка
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.deepPurple.shade500,
-                      Colors.deepPurple.shade700,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.deepPurple.shade200.withValues(alpha: 0.5),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          // Main content
+          SafeArea(
+            bottom: false,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: RefreshIndicator(
+                onRefresh: _loadUserData,
+                color: AppColors.primary,
+                backgroundColor: AppColors.surface,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
                   children: [
+                    // Header
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(
-                          Icons.account_balance_wallet_rounded,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          size: 20,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Привет, ${_user!.name}!',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Обзор ваших финансов',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Общий баланс',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        Row(
+                          children: [
+                            _HeaderIconButton(
+                              icon: Icons.person_rounded,
+                              onTap: _editProfile,
+                            ),
+                            const SizedBox(width: 8),
+                            _HeaderIconButton(
+                              icon: Icons.settings_rounded,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                              ),
+                            ),
+                          ],
                         ),
-                        const Spacer(),
-                        // Подсказка о встряхивании
-                        if (_user!.cashLocations.any((loc) => loc.isHidden) ||
-                            _user!.bankCards.any((card) => card.isHidden) ||
-                            _user!.mobileWallets.any((wallet) => wallet.isHidden))
-                          Icon(
-                            Icons.vibration,
-                            color: Colors.white.withValues(alpha: 0.5),
-                            size: 18,
-                          ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _formatCurrency(_user!.totalBalance),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
+
+                    const SizedBox(height: 24),
+
+                    // Total balance card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primaryDark,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.account_balance_wallet_rounded,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Общий баланс',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _formatCurrency(_user!.totalBalance),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (_user!.cashLocations.any((loc) => loc.isHidden) ||
-                        _user!.bankCards.any((card) => card.isHidden) ||
-                        _user!.mobileWallets.any((wallet) => wallet.isHidden))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Встряхните телефон для просмотра скрытых',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                          ),
+
+                    // Debts summary
+                    if (_debts.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.arrow_downward_rounded,
+                                        color: AppColors.accentGreen, size: 18),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Мне должны',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _formatCurrency(_user!.getTotalBorrowedDebts(_debts)),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.accentGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 50,
+                              color: AppColors.border,
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.arrow_upward_rounded,
+                                        color: AppColors.accentRed, size: 18),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Я должен',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _formatCurrency(_user!.getTotalLentDebts(_debts)),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.accentRed,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Balance details
+                    Text(
+                      'Детали баланса',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Cash locations
+                    if (_user!.cashLocations.where((loc) => _showHiddenFunds || !loc.isHidden).isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Наличные',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ..._user!.cashLocations.asMap().entries
+                          .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                          .map((entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _CompactCashCard(
+                              location: entry.value,
+                              index: entry.key,
+                              isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                            ),
+                          )),
+                    ],
+
+                    // Mobile wallets
+                    if (_user!.mobileWallets.where((wallet) => _showHiddenFunds || !wallet.isHidden).isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Мобильные кошельки',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ..._user!.mobileWallets.asMap().entries
+                          .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                          .map((entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _CompactMobileWalletCard(
+                              wallet: entry.value,
+                              index: entry.key,
+                              isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                            ),
+                          )),
+                    ],
+
+                    // Bank cards
+                    if (_user!.bankCards.where((card) => _showHiddenFunds || !card.isHidden).isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Банковские карты',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ..._user!.bankCards.asMap().entries
+                          .where((entry) => _showHiddenFunds || !entry.value.isHidden)
+                          .map((entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _CompactBankCard(
+                              card: entry.value,
+                              index: entry.key,
+                              isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
+                            ),
+                          )),
+                    ] else if (_user!.bankCards.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.credit_card_off_rounded,
+                              size: 32,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Нет карт',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Добавьте в профиле',
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+            ),
+          ),
 
-              const SizedBox(height: 16),
-
-              // Быстрые действия
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.history_rounded,
-                      label: 'Транзакции',
-                      color: Colors.blue,
-                      onTap: _openTransactions,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.account_balance_rounded,
-                      label: 'Долги',
-                      color: Colors.orange,
-                      onTap: _openDebts,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _QuickActionButton(
-                      icon: Icons.edit_rounded,
-                      label: 'Профиль',
-                      color: Colors.green,
-                      onTap: _editProfile,
-                    ),
-                  ),
-                ],
-              ),
-
-              // Долги - компактная карточка
-              if (_debts.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Text(
-                  'Долги и кредиты',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
+          // Bottom gradient fade
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    stops: const [0.0, 0.4, 0.7, 1.0],
+                    colors: [
+                      AppColors.background,
+                      AppColors.background.withValues(alpha: 0.95),
+                      AppColors.background.withValues(alpha: 0.6),
+                      AppColors.background.withValues(alpha: 0),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
+              ),
+            ),
+          ),
+
+          // Bottom Navigation Bar
+          Positioned(
+            bottom: 24,
+            left: 20,
+            right: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: AppColors.cardBackground.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Мне должны',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatCurrency(_user!.getTotalBorrowedDebts(_debts)),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _NavBarItem(
+                        icon: Icons.home_rounded,
+                        label: 'Главная',
+                        isSelected: _currentIndex == 0,
+                        onTap: () => _onNavTap(0),
                       ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: Colors.grey.shade200,
+                      _NavBarItem(
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Статистика',
+                        isSelected: _currentIndex == 1,
+                        onTap: () => _onNavTap(1),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Я должен',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatCurrency(_user!.getTotalLentDebts(_debts)),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _NavBarAddButton(
+                        onTap: () => _onNavTap(2),
+                      ),
+                      _NavBarItem(
+                        icon: Icons.receipt_long_rounded,
+                        label: 'История',
+                        isSelected: _currentIndex == 3,
+                        onTap: () => _onNavTap(3),
+                      ),
+                      _NavBarItem(
+                        icon: Icons.account_balance_rounded,
+                        label: 'Долги',
+                        isSelected: _currentIndex == 4,
+                        onTap: () => _onNavTap(4),
                       ),
                     ],
                   ),
                 ),
-              ],
-
-              const SizedBox(height: 20),
-
-              // Детали баланса
-              Text(
-                'Детали баланса',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
               ),
-              const SizedBox(height: 12),
-
-              // Отображаем каждое место хранения наличных отдельно
-              if (_user!.cashLocations.where((loc) => _showHiddenFunds || !loc.isHidden).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Наличные',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ..._user!.cashLocations.asMap().entries
-                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
-                    .map((entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _CompactCashCard(
-                        location: entry.value,
-                        index: entry.key,
-                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
-                      ),
-                    )),
-              ],
-
-              if (_user!.mobileWallets.where((wallet) => _showHiddenFunds || !wallet.isHidden).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Мобильные кошельки',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ..._user!.mobileWallets.asMap().entries
-                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
-                    .map((entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _CompactMobileWalletCard(
-                        wallet: entry.value,
-                        index: entry.key,
-                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
-                      ),
-                    )),
-              ],
-
-              if (_user!.bankCards.where((card) => _showHiddenFunds || !card.isHidden).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Банковские карты',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ..._user!.bankCards.asMap().entries
-                    .where((entry) => _showHiddenFunds || !entry.value.isHidden)
-                    .map((entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _CompactBankCard(
-                        card: entry.value,
-                        index: entry.key,
-                        isTemporarilyVisible: entry.value.isHidden && _showHiddenFunds,
-                      ),
-                    )),
-              ] else if (_user!.bankCards.isEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.credit_card_off_rounded,
-                        size: 32,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Нет карт',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              'Добавьте в профиле',
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 80),
-            ],
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addTransaction,
-        backgroundColor: Colors.deepPurple.shade600,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Транзакция',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
+class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionButton({
+  const _HeaderIconButton({
     required this.icon,
-    required this.label,
-    required this.color,
     required this.onTap,
   });
 
@@ -664,24 +704,56 @@ class _QuickActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.border),
         ),
+        child: Icon(icon, color: AppColors.textSecondary, size: 22),
+      ),
+    );
+  }
+}
+
+class _NavBarItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavBarItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 56,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 6),
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
               ),
-              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -690,6 +762,45 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
+class _NavBarAddButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _NavBarAddButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primary,
+              AppColors.primaryDark,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+    );
+  }
+}
 
 class _CompactCashCard extends StatelessWidget {
   final CashLocation location;
@@ -703,83 +814,53 @@ class _CompactCashCard extends StatelessWidget {
   });
 
   String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
-  }
-
-  List<List<Color>> _getGradientColors() {
-    return [
-      [Colors.green.shade400, Colors.green.shade600],
-      [Colors.teal.shade400, Colors.teal.shade600],
-      [const Color(0xFF9CCC65), const Color(0xFF689F38)],
-      [const Color(0xFF66BB6A), const Color(0xFF43A047)],
-    ];
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getGradientColors()[index % _getGradientColors().length];
+    final baseColor = isTemporarilyVisible
+        ? AppColors.accentOrange
+        : AppColors.accentGreen;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: isTemporarilyVisible
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.orange.shade400, Colors.orange.shade600],
-              )
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isTemporarilyVisible
-                ? Colors.orange.shade300.withValues(alpha: 0.5)
-                : colors[0].withValues(alpha: 0.5),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: baseColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.payments_rounded,
-              color: Colors.white,
-              size: 24,
+              color: baseColor,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  location.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+            child: Text(
+              location.name,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           Text(
             _formatCurrency(location.amount),
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: baseColor,
             ),
           ),
         ],
@@ -800,83 +881,53 @@ class _CompactMobileWalletCard extends StatelessWidget {
   });
 
   String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
-  }
-
-  List<List<Color>> _getGradientColors() {
-    return [
-      [const Color(0xFF11998e), const Color(0xFF38ef7d)],
-      [const Color(0xFF2193b0), const Color(0xFF6dd5ed)],
-      [const Color(0xFFee0979), const Color(0xFFff6a00)],
-      [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],
-    ];
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getGradientColors()[index % _getGradientColors().length];
+    final baseColor = isTemporarilyVisible
+        ? AppColors.accentOrange
+        : AppColors.accentBlue;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: isTemporarilyVisible
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.orange.shade400, Colors.orange.shade600],
-              )
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isTemporarilyVisible
-                ? Colors.orange.shade300.withValues(alpha: 0.5)
-                : colors[0].withValues(alpha: 0.5),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: baseColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.phone_android_rounded,
-              color: Colors.white,
-              size: 24,
+              color: baseColor,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  wallet.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+            child: Text(
+              wallet.name,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           Text(
             _formatCurrency(wallet.balance),
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: baseColor,
             ),
           ),
         ],
@@ -897,81 +948,55 @@ class _CompactBankCard extends StatelessWidget {
   });
 
   String _formatCurrency(double amount) {
-    return '${amount.toStringAsFixed(2)} ₽';
-  }
-
-  List<List<Color>> _getGradientColors() {
-    return [
-      [const Color(0xFF667eea), const Color(0xFF764ba2)],
-      [const Color(0xFFf093fb), const Color(0xFFf5576c)],
-      [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
-      [const Color(0xFF43e97b), const Color(0xFF38f9d7)],
-      [const Color(0xFFfa709a), const Color(0xFFfee140)],
-    ];
+    return '${amount.toStringAsFixed(2)} ЅМ';
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = _getGradientColors()[index % _getGradientColors().length];
+    final baseColor = isTemporarilyVisible
+        ? AppColors.accentOrange
+        : AppColors.primary;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: isTemporarilyVisible
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.orange.shade400, Colors.orange.shade600],
-              )
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isTemporarilyVisible
-                ? Colors.orange.shade300.withValues(alpha: 0.5)
-                : colors[0].withValues(alpha: 0.5),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: baseColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.credit_card_rounded,
-              color: Colors.white,
-              size: 24,
+              color: baseColor,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   card.cardName,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   card.maskedCardNumber,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.white70,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ],
@@ -979,10 +1004,10 @@ class _CompactBankCard extends StatelessWidget {
           ),
           Text(
             _formatCurrency(card.balance),
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: baseColor,
             ),
           ),
         ],
