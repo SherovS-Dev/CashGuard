@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_theme.dart';
+import '../utils/page_transitions.dart';
 import 'home_tab.dart';
 import 'statistics_tab.dart';
 import 'transactions_tab.dart';
@@ -46,9 +47,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Future<void> _addTransaction() async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AddTransactionScreen(),
-      ),
+      InstantPageRoute(page: const AddTransactionScreen()),
     );
 
     if (result == true) {

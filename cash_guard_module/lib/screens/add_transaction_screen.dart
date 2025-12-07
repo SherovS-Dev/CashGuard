@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shake/shake.dart';
+import '../constants/app_theme.dart';
 import '../models/bank_card.dart';
 import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
@@ -55,23 +56,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    // Вибрация
     HapticFeedback.mediumImpact();
 
-    // Показываем скрытые средства
     setState(() {
       _showHiddenFunds = true;
     });
 
-    // Перезагружаем список средств с учетом скрытых
     _loadLocations();
 
-    // Показываем уведомление
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('🔓 Скрытые средства показаны'),
-        backgroundColor: Colors.orange.shade700,
-        duration: const Duration(seconds: 2),
+      const SnackBar(
+        content: Text('🔓 Скрытые средства показаны'),
+        backgroundColor: AppColors.accentOrange,
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -90,7 +87,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     final locations = <TransactionLocation>[];
 
-    // Добавляем все места хранения наличных (с учетом фильтрации скрытых)
     for (var cashLocation in user.cashLocations) {
       if (_showHiddenFunds || !cashLocation.isHidden) {
         locations.add(
@@ -104,10 +100,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       }
     }
 
-    // ИСПРАВЛЕНО: Используем уникальный ID для карт (название + последние 4 цифры)
     for (var card in user.bankCards) {
       if (_showHiddenFunds || !card.isHidden) {
-        // Создаем уникальный ID: "cardName|last4digits"
         final uniqueId = '${card.cardName}|${card.cardNumber.substring(card.cardNumber.length - 4)}';
 
         locations.add(
@@ -116,14 +110,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             name: card.bankName != null
                 ? '${card.bankName} •${card.cardNumber.substring(card.cardNumber.length - 4)}'
                 : '${card.cardName} •${card.cardNumber.substring(card.cardNumber.length - 4)}',
-            id: uniqueId,  // ИСПРАВЛЕНО: используем уникальный ID
+            id: uniqueId,
             isTemporarilyVisible: card.isHidden && _showHiddenFunds,
           ),
         );
       }
     }
 
-    // Добавляем мобильные кошельки (с учетом фильтрации скрытых)
     for (var wallet in user.mobileWallets) {
       if (_showHiddenFunds || !wallet.isHidden) {
         locations.add(
@@ -155,7 +148,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Пожалуйста, выберите место'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.accentRed,
         ),
       );
       return;
@@ -165,7 +158,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Пожалуйста, выберите место назначения'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.accentRed,
         ),
       );
       return;
@@ -176,7 +169,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Нельзя перевести на то же самое место'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.accentRed,
         ),
       );
       return;
@@ -192,23 +185,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       transferTo: _selectedTransferTo,
     );
 
-    // Обновляем баланс пользователя
     final user = await _storageService.getUserData();
     if (user != null) {
       User updatedUser = user;
 
       if (_selectedType == TransactionType.transfer) {
-        // Обработка перевода
         updatedUser = _processTransfer(updatedUser, transaction);
       } else {
-        // Обработка дохода или расхода
         updatedUser = _processIncomeOrExpense(updatedUser, transaction);
       }
 
       await _storageService.saveUserData(updatedUser);
     }
 
-    // Сохраняем транзакцию
     await _storageService.addTransaction(transaction);
 
     if (!mounted) return;
@@ -218,10 +207,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   User _processTransfer(User user, Transaction transaction) {
     User updatedUser = user;
 
-    // Снимаем с источника
     updatedUser = _updateBalance(updatedUser, transaction.location, -transaction.amount);
 
-    // Зачисляем на получателя
     updatedUser = _updateBalance(updatedUser, transaction.transferTo!, transaction.amount);
 
     return updatedUser;
@@ -244,7 +231,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               id: loc.id,
               name: loc.name,
               amount: loc.amount + amountChange,
-              isHidden: loc.isHidden, // Сохраняем статус скрытости
+              isHidden: loc.isHidden,
             );
           }
           return loc;
@@ -258,17 +245,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         );
 
       case LocationType.card:
-      // ИСПРАВЛЕНО: Парсим уникальный ID для поиска нужной карты
         final parts = location.id?.split('|');
         if (parts == null || parts.length != 2) {
-          return user; // Если ID некорректный, возвращаем без изменений
+          return user;
         }
 
         final cardName = parts[0];
         final last4Digits = parts[1];
 
         final updatedCards = user.bankCards.map((card) {
-          // Проверяем совпадение по имени И последним 4 цифрам
           final cardLast4 = card.cardNumber.substring(card.cardNumber.length - 4);
           if (card.cardName == cardName && cardLast4 == last4Digits) {
             return BankCard(
@@ -276,7 +261,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               cardNumber: card.cardNumber,
               balance: card.balance + amountChange,
               bankName: card.bankName,
-              isHidden: card.isHidden, // Сохраняем статус скрытости
+              isHidden: card.isHidden,
             );
           }
           return card;
@@ -291,13 +276,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       case LocationType.mobileWallet:
         final updatedWallets = user.mobileWallets.map((wallet) {
-          // ИСПРАВЛЕНО: Используем name вместо phoneNumber для идентификации
           if (wallet.name == location.name) {
             return MobileWallet(
               name: wallet.name,
               phoneNumber: wallet.phoneNumber,
               balance: wallet.balance + amountChange,
-              isHidden: wallet.isHidden, // Сохраняем статус скрытости
+              isHidden: wallet.isHidden,
             );
           }
           return wallet;
@@ -325,7 +309,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   List<Color> _getLocationGradient(LocationType type, bool isTemporarilyVisible) {
     if (isTemporarilyVisible) {
-      return [Colors.orange.shade400, Colors.orange.shade600];
+      return [AppColors.accentOrange, AppColors.accentOrange.withAlpha(150)];
     }
 
     switch (type) {
@@ -340,305 +324,337 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Color statusBarColor = _selectedType == TransactionType.income
+        ? AppColors.accentGreen
+        : _selectedType == TransactionType.expense
+            ? AppColors.accentRed
+            : AppColors.accentBlue;
+
     if (_isLoadingLocations) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.deepPurple.shade700,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
-              ),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.deepPurple.shade700,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: statusBarColor,
       ),
       child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: Column(
-            children: [
-              // Custom App Bar (extends to status bar)
-              Container(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 20,
-                  left: 20,
-                  right: 20,
-                  bottom: 20,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.deepPurple.shade400,
-                      Colors.deepPurple.shade700,
-                    ],
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 20,
+                left: 20,
+                right: 20,
+                bottom: 20,
+              ),
+              decoration: BoxDecoration(
+                color: statusBarColor,
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                   ),
-                ),
-                child: Row(
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(50),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.add_circle_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Новая транзакция',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Добавьте доход, расход или перевод',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.cardBackground,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      child: const Icon(
-                        Icons.add_circle_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(
-                            'Новая транзакция',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          Expanded(
+                            child: _TypeButton(
+                              label: 'Доход',
+                              icon: Icons.arrow_downward_rounded,
+                              color: AppColors.accentGreen,
+                              isSelected: _selectedType == TransactionType.income,
+                              onTap: () {
+                                setState(() {
+                                  _selectedType = TransactionType.income;
+                                  _selectedTransferTo = null;
+                                });
+                              },
                             ),
                           ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Добавьте доход, расход или перевод',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white70,
+                          Expanded(
+                            child: _TypeButton(
+                              label: 'Расход',
+                              icon: Icons.arrow_upward_rounded,
+                              color: AppColors.accentRed,
+                              isSelected: _selectedType == TransactionType.expense,
+                              onTap: () {
+                                setState(() {
+                                  _selectedType = TransactionType.expense;
+                                  _selectedTransferTo = null;
+                                });
+                              },
+                            ),
+                          ),
+                          Expanded(
+                            child: _TypeButton(
+                              label: 'Перевод',
+                              icon: Icons.swap_horiz_rounded,
+                              color: AppColors.accentBlue,
+                              isSelected: _selectedType == TransactionType.transfer,
+                              onTap: () {
+                                setState(() {
+                                  _selectedType = TransactionType.transfer;
+                                });
+                              },
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              // Form Content
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      // Type Selector
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                      ],
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Сумма',
+                        labelStyle: TextStyle(color: AppColors.textSecondary),
+                        hintText: '0.00',
+                        prefixIcon: Icon(
+                          Icons.attach_money_rounded,
+                          color: statusBarColor,
+                          size: 32,
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _TypeButton(
-                                label: 'Доход',
-                                icon: Icons.arrow_downward_rounded,
-                                color: Colors.green,
-                                isSelected: _selectedType == TransactionType.income,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedType = TransactionType.income;
-                                    _selectedTransferTo = null;
-                                  });
-                                },
+                        suffixText: 'ЅМ',
+                        suffixStyle: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: statusBarColor,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: statusBarColor, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.cardBackground,
+                        contentPadding: const EdgeInsets.all(20),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Введите сумму';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Введите корректную сумму';
+                        }
+                        if (double.parse(value) <= 0) {
+                          return 'Сумма должна быть больше 0';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _descriptionController,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Описание',
+                        labelStyle: TextStyle(color: AppColors.textSecondary),
+                        hintText: _selectedType == TransactionType.transfer
+                            ? 'Например: Пополнение карты'
+                            : 'Например: Зарплата за октябрь',
+                        prefixIcon: const Icon(
+                          Icons.description_rounded,
+                          color: AppColors.primary,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.cardBackground,
+                        contentPadding: const EdgeInsets.all(20),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Введите описание';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _selectedType == TransactionType.transfer ? 'Откуда' : 'Место',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 80,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _availableLocations.length,
+                        itemBuilder: (context, index) {
+                          final location = _availableLocations[index];
+                          final isSelected = _selectedLocation?.id == location.id;
+                          final isTemporarilyVisible = location.isTemporarilyVisible;
+                          final gradient = _getLocationGradient(location.type, isTemporarilyVisible);
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              left: index == 0 ? 0 : 8,
+                              right: index == _availableLocations.length - 1 ? 0 : 8,
+                            ),
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedLocation = location;
+                                });
+                              },
+                              child: Container(
+                                width: 200,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: gradient,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: gradient[0].withAlpha(100),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                  border: isSelected
+                                      ? Border.all(color: Colors.white, width: 3)
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withAlpha(60),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        _getLocationIcon(location.type),
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        location.name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            Expanded(
-                              child: _TypeButton(
-                                label: 'Расход',
-                                icon: Icons.arrow_upward_rounded,
-                                color: Colors.red,
-                                isSelected: _selectedType == TransactionType.expense,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedType = TransactionType.expense;
-                                    _selectedTransferTo = null;
-                                  });
-                                },
-                              ),
-                            ),
-                            Expanded(
-                              child: _TypeButton(
-                                label: 'Перевод',
-                                icon: Icons.swap_horiz_rounded,
-                                color: Colors.blue,
-                                isSelected: _selectedType == TransactionType.transfer,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedType = TransactionType.transfer;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-
+                    ),
+                    if (_selectedType == TransactionType.transfer) ...[
                       const SizedBox(height: 24),
-
-                      // Amount Field
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextFormField(
-                          controller: _amountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                          ],
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Сумма',
-                            hintText: '0.00',
-                            prefixIcon: Icon(
-                              Icons.attach_money_rounded,
-                              color: _selectedType == TransactionType.income
-                                  ? Colors.green
-                                  : _selectedType == TransactionType.transfer
-                                  ? Colors.blue
-                                  : Colors.red,
-                              size: 32,
-                            ),
-                            suffixText: 'ЅМ',
-                            suffixStyle: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: _selectedType == TransactionType.income
-                                  ? Colors.green
-                                  : _selectedType == TransactionType.transfer
-                                  ? Colors.blue
-                                  : Colors.red,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.all(20),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Введите сумму';
-                            }
-                            if (double.tryParse(value) == null) {
-                              return 'Введите корректную сумму';
-                            }
-                            if (double.parse(value) <= 0) {
-                              return 'Сумма должна быть больше 0';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Description Field
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextFormField(
-                          controller: _descriptionController,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Описание',
-                            hintText: _selectedType == TransactionType.transfer
-                                ? 'Например: Пополнение карты'
-                                : 'Например: Зарплата за октябрь',
-                            prefixIcon: Icon(
-                              Icons.description_rounded,
-                              color: Colors.deepPurple.shade400,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.all(20),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Введите описание';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Location Selector
                       Text(
-                        _selectedType == TransactionType.transfer ? 'Откуда' : 'Место',
+                        'Куда',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade800,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -649,7 +665,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           itemCount: _availableLocations.length,
                           itemBuilder: (context, index) {
                             final location = _availableLocations[index];
-                            final isSelected = _selectedLocation?.id == location.id;
+                            final isSelected = _selectedTransferTo?.id == location.id;
                             final isTemporarilyVisible = location.isTemporarilyVisible;
                             final gradient = _getLocationGradient(location.type, isTemporarilyVisible);
 
@@ -661,7 +677,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               child: GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    _selectedLocation = location;
+                                    _selectedTransferTo = location;
                                   });
                                 },
                                 child: Container(
@@ -676,7 +692,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: gradient[0].withValues(alpha: 0.4),
+                                        color: gradient[0].withAlpha(100),
                                         blurRadius: 12,
                                         offset: const Offset(0, 6),
                                       ),
@@ -690,7 +706,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                       Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.25),
+                                          color: Colors.white.withAlpha(60),
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: Icon(
@@ -720,153 +736,41 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           },
                         ),
                       ),
-
-                      // Transfer To Selector (only for transfers)
-                      if (_selectedType == TransactionType.transfer) ...[
-                        const SizedBox(height: 24),
-                        Text(
-                          'Куда',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
+                    ],
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _saveTransaction,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: statusBarColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 80,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _availableLocations.length,
-                            itemBuilder: (context, index) {
-                              final location = _availableLocations[index];
-                              final isSelected = _selectedTransferTo?.id == location.id;
-                              final isTemporarilyVisible = location.isTemporarilyVisible;
-                              final gradient = _getLocationGradient(location.type, isTemporarilyVisible);
-
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  left: index == 0 ? 0 : 8,
-                                  right: index == _availableLocations.length - 1 ? 0 : 8,
-                                ),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedTransferTo = location;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 200,
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: gradient,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: gradient[0].withValues(alpha: 0.4),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 6),
-                                        ),
-                                      ],
-                                      border: isSelected
-                                          ? Border.all(color: Colors.white, width: 3)
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.25),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Icon(
-                                            _getLocationIcon(location.type),
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            location.name,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 32),
-
-                      // Save Button
-                      Container(
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.deepPurple.shade400,
-                              Colors.deepPurple.shade600,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.deepPurple.shade200,
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.white),
+                            SizedBox(width: 12),
+                            Text(
+                              'Сохранить транзакцию',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: _saveTransaction,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle_rounded, color: Colors.white),
-                              SizedBox(width: 12),
-                              Text(
-                                'Сохранить транзакцию',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -892,27 +796,19 @@ class _TypeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? AppColors.primary.withAlpha(20) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected
-              ? [
-            BoxShadow(
-              color: Colors.grey.shade300,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ]
-              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? color : Colors.grey.shade600,
+              color: color,
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -921,7 +817,7 @@ class _TypeButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? color : Colors.grey.shade600,
+                color: color,
               ),
             ),
           ],

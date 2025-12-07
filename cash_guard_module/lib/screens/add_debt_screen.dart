@@ -7,6 +7,7 @@ import '../models/cash_location.dart';
 import '../models/bank_card.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
+import '../constants/app_theme.dart';
 
 class AddDebtScreen extends StatefulWidget {
   final Debt? debtToEdit;
@@ -308,25 +309,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.deepPurple.shade700,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: Column(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
             children: [
               // App Bar (extends to status bar)
               Container(
@@ -336,13 +321,13 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                   right: 20,
                   bottom: 20,
                 ),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.deepPurple.shade400,
-                      Colors.deepPurple.shade700,
+                      AppColors.primary,
+                      AppColors.primaryDark,
                     ],
                   ),
                 ),
@@ -404,7 +389,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: AppColors.surfaceLighter,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -514,15 +499,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       if (!_isEditMode) ...[
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.cardBackground,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.shade200,
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +512,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                   children: [
                                     Icon(
                                       Icons.account_balance_wallet_rounded,
-                                      color: Colors.deepPurple.shade400,
+                                      color: AppColors.primary,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -542,16 +521,16 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade700,
+                                        color: AppColors.textSecondary,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               if (_isLoadingLocations)
-                                const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Center(child: CircularProgressIndicator()),
+                                Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                                 )
                               else if (_availableLocations.isEmpty)
                                 Padding(
@@ -560,7 +539,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                     'Нет доступных источников средств',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.grey.shade600,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
                                 )
@@ -576,10 +555,10 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? Colors.deepPurple.shade50 : Colors.transparent,
+                                        color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
                                         border: Border(
                                           top: BorderSide(
-                                            color: Colors.grey.shade200,
+                                            color: AppColors.border,
                                             width: 1,
                                           ),
                                         ),
@@ -589,8 +568,8 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                           Icon(
                                             _getLocationIcon(location.type),
                                             color: isSelected
-                                                ? Colors.deepPurple.shade600
-                                                : Colors.grey.shade600,
+                                                ? AppColors.primary
+                                                : AppColors.textSecondary,
                                             size: 20,
                                           ),
                                           const SizedBox(width: 12),
@@ -601,15 +580,15 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                                 fontSize: 15,
                                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                                                 color: isSelected
-                                                    ? Colors.deepPurple.shade700
-                                                    : Colors.black87,
+                                                    ? AppColors.primary
+                                                    : AppColors.textPrimary,
                                               ),
                                             ),
                                           ),
                                           if (isSelected)
                                             Icon(
                                               Icons.check_circle_rounded,
-                                              color: Colors.deepPurple.shade600,
+                                              color: AppColors.primary,
                                               size: 20,
                                             ),
                                         ],
@@ -677,16 +656,16 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       Container(
                         height: 56,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             colors: [
-                              Colors.deepPurple.shade400,
-                              Colors.deepPurple.shade600,
+                              AppColors.primary,
+                              AppColors.primaryDark,
                             ],
                           ),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.deepPurple.shade200,
+                              color: AppColors.primary.withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             ),
@@ -724,8 +703,6 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -742,15 +719,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: TextFormField(
         controller: controller,
@@ -758,21 +729,25 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         inputFormatters: inputFormatters,
         validator: validator,
         maxLines: maxLines,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
         ),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: TextStyle(color: AppColors.textSecondary),
           hintText: hint,
-          prefixIcon: Icon(icon, color: Colors.deepPurple.shade400),
+          hintStyle: TextStyle(color: AppColors.textMuted),
+          prefixIcon: Icon(icon, color: AppColors.primary),
           suffixText: suffix,
+          suffixStyle: TextStyle(color: AppColors.textSecondary),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.cardBackground,
           contentPadding: const EdgeInsets.all(20),
         ),
       ),
@@ -802,23 +777,15 @@ class _TypeButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? AppColors.cardBackground : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected
-              ? [
-            BoxShadow(
-              color: Colors.grey.shade300,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ]
-              : null,
+          border: isSelected ? Border.all(color: AppColors.border) : null,
         ),
         child: Column(
           children: [
             Icon(
               icon,
-              color: isSelected ? color : Colors.grey.shade600,
+              color: isSelected ? color : AppColors.textMuted,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -827,7 +794,7 @@ class _TypeButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? color : Colors.grey.shade600,
+                color: isSelected ? color : AppColors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -858,15 +825,9 @@ class _DateSelector extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade200,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -875,7 +836,7 @@ class _DateSelector extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -883,7 +844,7 @@ class _DateSelector extends StatelessWidget {
               children: [
                 Icon(
                   Icons.calendar_today_rounded,
-                  color: Colors.deepPurple.shade400,
+                  color: AppColors.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -894,7 +855,7 @@ class _DateSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: date != null ? Colors.black87 : Colors.grey.shade500,
+                    color: date != null ? AppColors.textPrimary : AppColors.textMuted,
                   ),
                 ),
               ],

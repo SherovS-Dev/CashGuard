@@ -1,7 +1,6 @@
+import 'package:cash_guard/screens/lock_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/time_check_wrapper.dart';
-import 'services/time_security_service.dart';
 import 'services/screen_security_service.dart';
 import 'services/secure_storage_service.dart';
 import 'constants/app_theme.dart';
@@ -17,9 +16,6 @@ void main() async {
 
   // Включение защиты от скриншотов и записи экрана
   await ScreenSecurityService.enableScreenSecurity();
-
-  final timeSecurityService = TimeSecurityService();
-  await timeSecurityService.initialize();
 
   // Load saved theme mode
   final storageService = SecureStorageService();
@@ -98,6 +94,9 @@ class CashGuardAppState extends State<CashGuardApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
+      // Smooth theme transition animation
+      themeAnimationDuration: const Duration(milliseconds: 400),
+      themeAnimationCurve: Curves.easeInOut,
       builder: (context, child) {
         // Update AppColors when theme changes
         final brightness = Theme.of(context).brightness;
@@ -107,7 +106,7 @@ class CashGuardAppState extends State<CashGuardApp> {
           child: child ?? const SizedBox(),
         );
       },
-      home: TimeCheckWrapper(
+      home: LockScreen(
         onThemeChanged: setThemeMode,
       ),
     );

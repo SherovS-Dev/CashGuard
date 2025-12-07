@@ -6,10 +6,12 @@ import '../models/cash_location.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import '../services/backup_service.dart';
+import '../utils/page_transitions.dart';
 import 'main_navigation_screen.dart';
 import '../models/user.dart';
 import '../widgets/color_picker_widget.dart';
 import '../constants/color_palettes.dart';
+import '../constants/app_theme.dart';
 
 class UserSetupScreen extends StatefulWidget {
   final Function(ThemeMode)? onThemeChanged;
@@ -384,9 +386,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                   Navigator.of(context).pop();
                   // Переходим на главный экран
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
-                    ),
+                    InstantPageRoute(page: MainNavigationScreen(onThemeChanged: widget.onThemeChanged)),
                   );
                 },
                 child: const Text('Продолжить'),
@@ -498,9 +498,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
     } else {
       // В режиме создания переходим на главный экран
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
-        ),
+        InstantPageRoute(page: MainNavigationScreen(onThemeChanged: widget.onThemeChanged)),
       );
     }
   }
@@ -508,92 +506,40 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.deepPurple.shade700,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
-              ),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
     if (_isRestoring) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.deepPurple.shade700,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 24),
+              Text(
+                'Восстановление данных...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 24),
-                  Text(
-                    'Восстановление данных...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
       );
     }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.deepPurple.shade700,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.deepPurple.shade50,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: Column(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
             children: [
               // Custom App Bar с счетчиками (extends to status bar)
               Container(
@@ -1491,8 +1437,6 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 }

@@ -476,29 +476,84 @@ class AppTheme {
 }
 
 /// Widget that provides animated gradient background based on current theme
-class GradientBackground extends StatelessWidget {
+class GradientBackground extends StatefulWidget {
   final Widget child;
 
   const GradientBackground({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    AppColors.setDarkMode(isDark);
+  State<GradientBackground> createState() => _GradientBackgroundState();
+}
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
+class _GradientBackgroundState extends State<GradientBackground>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  bool _isDark = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
       curve: Curves.easeInOut,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? AppColors.backgroundGradientDark
-              : AppColors.backgroundGradientLight,
-        ),
-      ),
-      child: child,
+    );
+    // Set initial value based on current dark mode setting
+    if (AppColors.isDarkMode) {
+      _controller.value = 1.0;
+      _isDark = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark != _isDark) {
+      _isDark = isDark;
+      AppColors.setDarkMode(isDark);
+      if (isDark) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final value = _animation.value;
+        final colors = [
+          Color.lerp(AppColors.backgroundGradientLight[0], AppColors.backgroundGradientDark[0], value)!,
+          Color.lerp(AppColors.backgroundGradientLight[1], AppColors.backgroundGradientDark[1], value)!,
+          Color.lerp(AppColors.backgroundGradientLight[2], AppColors.backgroundGradientDark[2], value)!,
+        ];
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: colors,
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

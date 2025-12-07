@@ -9,6 +9,7 @@ import '../models/debt.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import '../constants/app_theme.dart';
+import '../utils/page_transitions.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
 import 'settings_screen.dart';
@@ -147,7 +148,7 @@ class HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
       await _storageService.clearAllData();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LockScreen()),
+          InstantPageRoute(page: const LockScreen()),
           (route) => false,
         );
       }
@@ -158,9 +159,7 @@ class HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
     if (!mounted) return;
 
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const UserSetupScreen(),
-      ),
+      InstantPageRoute(page: const UserSetupScreen()),
     );
 
     if (result == true) {
@@ -244,7 +243,7 @@ class HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
                     _HeaderIconButton(
                       icon: Icons.settings_rounded,
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => SettingsScreen(onThemeChanged: widget.onThemeChanged)),
+                        InstantPageRoute(page: SettingsScreen(onThemeChanged: widget.onThemeChanged)),
                       ),
                     ),
                   ],

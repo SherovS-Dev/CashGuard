@@ -18,6 +18,15 @@ class BiometricAuthService {
     }
   }
 
+  Future<bool> hasEnrolledBiometrics() async {
+    try {
+      final List<BiometricType> availableBiometrics = await getAvailableBiometrics();
+      return availableBiometrics.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       return await _localAuth.getAvailableBiometrics();

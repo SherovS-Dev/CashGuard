@@ -10,6 +10,7 @@ import '../models/debt.dart';
 import '../models/mobile_wallet.dart';
 import '../services/secure_storage_service.dart';
 import '../constants/app_theme.dart';
+import '../utils/page_transitions.dart';
 import 'debts_screen.dart';
 import 'lock_screen.dart';
 import 'user_setup_screen.dart';
@@ -153,9 +154,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       await _storageService.clearAllData();
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const LockScreen(),
-          ),
+          InstantPageRoute(page: const LockScreen()),
         );
       }
     }
@@ -165,9 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (!mounted) return;
 
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const UserSetupScreen(),
-      ),
+      InstantPageRoute(page: const UserSetupScreen()),
     );
 
     if (result == true) {
@@ -179,9 +176,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (!mounted) return;
 
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AddTransactionScreen(),
-      ),
+      InstantPageRoute(page: const AddTransactionScreen()),
     );
 
     if (result == true) {
@@ -204,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         break;
       case 1: // Statistics
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+          InstantPageRoute(page: const StatisticsScreen()),
         ).then((_) => setState(() => _currentIndex = 0));
         break;
       case 2: // Add Transaction (центральная кнопка)
@@ -212,12 +207,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         break;
       case 3: // Transactions
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TransactionsScreen()),
+          InstantPageRoute(page: const TransactionsScreen()),
         ).then((_) => setState(() => _currentIndex = 0));
         break;
       case 4: // Debts
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const DebtsScreen()),
+          InstantPageRoute(page: const DebtsScreen()),
         ).then((_) {
           _loadUserData();
           setState(() => _currentIndex = 0);
@@ -230,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
@@ -239,9 +234,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     if (_user == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.transparent,
           title: Text('CashGuard', style: TextStyle(color: AppColors.textPrimary)),
           actions: [
             IconButton(
@@ -258,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Main content
@@ -308,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             _HeaderIconButton(
                               icon: Icons.settings_rounded,
                               onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                                InstantPageRoute(page: const SettingsScreen()),
                               ),
                             ),
                           ],

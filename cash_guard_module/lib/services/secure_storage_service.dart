@@ -62,7 +62,7 @@ class SecureStorageService {
     await _secureStorage.write(key: 'user_password', value: hashedPassword);
   }
 
-  Future<bool> verifyPassword(String password) async {
+  Future<bool> checkPassword(String password) async {
     final storedHash = await _secureStorage.read(key: 'user_password');
     if (storedHash == null) return false;
     final inputHash = _hashPassword(password);

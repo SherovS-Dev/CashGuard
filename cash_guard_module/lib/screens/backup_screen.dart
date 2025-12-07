@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/backup_service.dart';
+import '../constants/app_theme.dart';
+import '../utils/page_transitions.dart';
 import 'main_navigation_screen.dart';
 
 class BackupScreen extends StatefulWidget {
@@ -235,10 +237,8 @@ class _BackupScreenState extends State<BackupScreen> {
                   Navigator.of(context).pop();
                   // Перезагружаем приложение
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const MainNavigationScreen(),
-                    ),
-                        (route) => false,
+                    InstantPageRoute(page: const MainNavigationScreen()),
+                    (route) => false,
                   );
                 },
                 child: const Text('OK'),
@@ -278,18 +278,8 @@ class _BackupScreenState extends State<BackupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.deepPurple.shade50,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
           child: Column(
             children: [
               // App Bar
@@ -530,8 +520,7 @@ class _BackupScreenState extends State<BackupScreen> {
               ),
             ],
           ),
-        ),
-      ),
+      )
     );
   }
 }
@@ -561,7 +550,7 @@ class _BackupActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: color.withValues(alpha: 0.3),
@@ -569,7 +558,7 @@ class _BackupActionCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: AppColors.isDarkMode ? Colors.black26 : Colors.grey.shade200,
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -596,9 +585,10 @@ class _BackupActionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -606,7 +596,7 @@ class _BackupActionCard extends StatelessWidget {
                       description,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -614,7 +604,7 @@ class _BackupActionCard extends StatelessWidget {
               ),
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                color: Colors.grey.shade400,
+                color: AppColors.textMuted,
                 size: 20,
               ),
             ],

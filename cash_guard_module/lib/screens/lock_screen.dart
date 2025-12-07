@@ -3,6 +3,7 @@ import '../services/secure_storage_service.dart';
 import '../services/biometric_auth_service.dart';
 import 'user_setup_screen.dart';
 import 'main_navigation_screen.dart';
+import '../constants/app_theme.dart';
 
 class LockScreen extends StatefulWidget {
   final Function(ThemeMode)? onThemeChanged;
@@ -34,7 +35,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Анимация масштабирования при появлении
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -43,7 +43,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
     );
 
-    // Анимация тряски для ошибки
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -74,8 +73,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
       _biometricAvailable = biometricAvailable;
       _isLoading = false;
     });
-
-    // НЕ запускаем биометрию автоматически
   }
 
   Future<void> _authenticateWithBiometrics() async {
@@ -111,7 +108,6 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
         _errorMessage = null;
       });
 
-      // Автоматически проверяем/устанавливаем PIN когда введено 4 цифры
       if (_pin.length == _pinLength) {
         Future.delayed(const Duration(milliseconds: 200), () {
           if (_isPasswordSet) {
@@ -159,12 +155,11 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
       return;
     }
 
-    final isValid = await _storageService.verifyPassword(_pin);
+    final isValid = await _storageService.checkPassword(_pin);
 
     if (isValid) {
       _unlockApp();
     } else {
-      // Анимация тряски при ошибке
       _shakeController.forward(from: 0);
       setState(() {
         _errorMessage = 'Неверный PIN-код';
@@ -174,272 +169,183 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _unlockApp() async {
-    // Проверяем, есть ли данные пользователя
     final hasUserData = await _storageService.isUserDataSet();
 
     if (!mounted) return;
 
-    if (hasUserData) {
-      // Если данные есть, идем на главный экран
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => MainNavigationScreen(onThemeChanged: widget.onThemeChanged),
-        ),
-      );
-    } else {
-      // Если данных нет, идем на экран настройки
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => UserSetupScreen(onThemeChanged: widget.onThemeChanged),
-        ),
-      );
-    }
+    final screen = hasUserData
+        ? MainNavigationScreen(onThemeChanged: widget.onThemeChanged)
+        : UserSetupScreen(onThemeChanged: widget.onThemeChanged);
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => screen,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.deepPurple.shade400,
-                Colors.deepPurple.shade700,
-                Colors.indigo.shade900,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 3,
-            ),
-          ),
+        backgroundColor: Colors.transparent,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
-    // Показываем биометрическую кнопку только если:
-    // 1. Пароль установлен
-    // 2. Биометрия включена в настройках
-    // 3. Биометрия доступна на устройстве
     final showBiometric = _isPasswordSet && _biometricEnabled && _biometricAvailable;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.deepPurple.shade400,
-              Colors.deepPurple.shade700,
-              Colors.indigo.shade900,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Compact icon
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            spreadRadius: 3,
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary.withAlpha(30),
+                      border: Border.all(
+                        color: AppColors.primary.withAlpha(50),
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 50,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'CashGuard',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isPasswordSet ? 'Введите PIN-код' : 'Создайте PIN-код',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  AnimatedBuilder(
+                    animation: _shakeAnimation,
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(
+                          _shakeAnimation.value * ((_shakeController.value * 4).floor().isEven ? 1 : -1),
+                          0,
+                        ),
+                        child: child,
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_pinLength, (index) {
+                        final isFilled = index < _pin.length;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isFilled ? AppColors.primary : AppColors.background,
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 2,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.lock_outline_rounded,
-                        size: 50,
-                        color: Colors.white,
-                      ),
+                        );
+                      }),
                     ),
-                    const SizedBox(height: 20),
-                    // App title
-                    const Text(
-                      'CashGuard',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_errorMessage != null) ...[
                     Text(
-                      _isPasswordSet ? 'Введите PIN-код' : 'Создайте PIN-код',
-                      style: TextStyle(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        color: AppColors.accentRed,
                         fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
                         fontWeight: FontWeight.w500,
                       ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // PIN indicators
-                    AnimatedBuilder(
-                      animation: _shakeAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(_shakeAnimation.value *
-                            ((_shakeController.value * 4).floor().isEven ? 1 : -1), 0),
-                          child: child,
-                        );
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_pinLength, (index) {
-                          final isFilled = index < _pin.length;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isFilled ? Colors.white : Colors.white.withValues(alpha: 0.3),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                width: 2,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Error message
-                    if (_errorMessage != null) ...[
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 280),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade400.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // Number pad
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 300),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Rows 1-3
-                          for (int row = 0; row < 3; row++)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  for (int col = 1; col <= 3; col++)
-                                    _buildNumberButton('${row * 3 + col}'),
-                                ],
-                              ),
-                            ),
-                          // Last row with biometric, 0, delete
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Biometric button or empty space
-                              if (showBiometric)
-                                _buildActionButton(
-                                  icon: Icons.fingerprint_rounded,
-                                  onPressed: _authenticateWithBiometrics,
-                                )
-                              else
-                                const SizedBox(width: 64, height: 64),
-
-                              // 0 button
-                              _buildNumberButton('0'),
-
-                              // Delete button
-                              _buildActionButton(
-                                icon: Icons.backspace_outlined,
-                                onPressed: _onDeletePressed,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    // Security badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.verified_user_rounded,
-                            color: Colors.white.withValues(alpha: 0.9),
-                            size: 14,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Защищено шифрованием',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                  ],
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 300),
+                    child: Column(
+                      children: [
+                        for (int row = 0; row < 3; row++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                for (int col = 1; col <= 3; col++)
+                                  _buildNumberButton('${row * 3 + col}'),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            if (showBiometric)
+                              _buildActionButton(
+                                icon: Icons.fingerprint_rounded,
+                                onPressed: _authenticateWithBiometrics,
+                              )
+                            else
+                              const SizedBox(width: 72, height: 72),
+                            _buildNumberButton('0'),
+                            _buildActionButton(
+                              icon: Icons.backspace_outlined,
+                              onPressed: _onDeletePressed,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        color: AppColors.textSecondary,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Защищено шифрованием',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -449,31 +355,27 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNumberButton(String number) {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.2),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 2,
-        ),
-      ),
+    return SizedBox(
+      width: 72,
+      height: 72,
       child: Material(
-        color: Colors.transparent,
+        color: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: AppColors.border, width: 1.5),
+        ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(32),
-          splashColor: Colors.white.withValues(alpha: 0.3),
-          highlightColor: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(24),
+          splashColor: AppColors.primary.withAlpha(40),
+          highlightColor: AppColors.primary.withAlpha(20),
           onTap: () => _onNumberPressed(number),
           child: Center(
             child: Text(
               number,
-              style: const TextStyle(
-                fontSize: 28,
+              style: TextStyle(
+                fontSize: 32,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -486,29 +388,21 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.2),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 2,
-        ),
-      ),
+    return SizedBox(
+      width: 72,
+      height: 72,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(32),
-          splashColor: Colors.white.withValues(alpha: 0.3),
-          highlightColor: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(24),
+          splashColor: AppColors.primary.withAlpha(40),
+          highlightColor: AppColors.primary.withAlpha(20),
           onTap: onPressed,
           child: Center(
             child: Icon(
               icon,
-              color: Colors.white,
-              size: 26,
+              color: AppColors.textSecondary,
+              size: 32,
             ),
           ),
         ),

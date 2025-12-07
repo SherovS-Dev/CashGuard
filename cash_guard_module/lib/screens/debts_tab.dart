@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/debt.dart';
 import '../services/secure_storage_service.dart';
 import '../constants/app_theme.dart';
+import '../utils/page_transitions.dart';
 import 'add_debt_screen.dart';
 
 class DebtsTab extends StatefulWidget {
@@ -72,9 +73,7 @@ class DebtsTabState extends State<DebtsTab> with SingleTickerProviderStateMixin,
 
   Future<void> _addDebt() async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AddDebtScreen(),
-      ),
+      InstantPageRoute(page: const AddDebtScreen()),
     );
 
     if (result == true) {
@@ -84,9 +83,7 @@ class DebtsTabState extends State<DebtsTab> with SingleTickerProviderStateMixin,
 
   Future<void> _editDebt(Debt debt) async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AddDebtScreen(debtToEdit: debt),
-      ),
+      InstantPageRoute(page: AddDebtScreen(debtToEdit: debt)),
     );
 
     if (result == true) {

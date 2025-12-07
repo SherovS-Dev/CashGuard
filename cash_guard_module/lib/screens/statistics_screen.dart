@@ -49,7 +49,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
@@ -63,7 +63,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           bottom: true,
           child: Column(

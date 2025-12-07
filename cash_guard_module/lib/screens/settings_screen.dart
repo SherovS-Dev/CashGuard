@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/secure_storage_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../constants/app_theme.dart';
+import '../main.dart';
+import '../utils/page_transitions.dart';
 import 'backup_screen.dart';
 import 'lock_screen.dart';
 
@@ -20,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
+  bool _hasEnrolledBiometrics = false;
   String _themeMode = 'system';
   bool _isLoading = true;
 
@@ -31,11 +34,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final biometricAvailable = await _biometricService.canUseBiometrics();
+    final hasEnrolledBiometrics = await _biometricService.hasEnrolledBiometrics();
     final biometricEnabled = await _storageService.getBiometricEnabled();
     final themeMode = await _storageService.getThemeMode();
 
     setState(() {
       _biometricAvailable = biometricAvailable;
+      _hasEnrolledBiometrics = hasEnrolledBiometrics;
       _biometricEnabled = biometricEnabled;
       _themeMode = themeMode;
       _isLoading = false;
@@ -43,6 +48,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
+    if (value && !_hasEnrolledBiometrics) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Сначала зарегистрируйте биометрические данные в настройках вашего устройства.'),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.accentRed,
+        ),
+      );
+      return;
+    }
+
     if (!_biometricAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -94,25 +117,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _changeTheme(String mode) async {
     await _storageService.setThemeMode(mode);
-    setState(() {
-      _themeMode = mode;
-    });
 
-    // Применяем тему
     ThemeMode themeMode;
     switch (mode) {
       case 'light':
         themeMode = ThemeMode.light;
+        AppColors.setDarkMode(false);
         break;
       case 'dark':
         themeMode = ThemeMode.dark;
+        AppColors.setDarkMode(true);
         break;
       default:
         themeMode = ThemeMode.system;
+        final brightness = MediaQuery.of(context).platformBrightness;
+        AppColors.setDarkMode(brightness == Brightness.dark);
     }
 
-    // Вызываем callback для изменения темы
+    // Use global app key to change theme immediately
+    final appState = context.findAncestorStateOfType<CashGuardAppState>();
+    appState?.setThemeMode(themeMode);
+
     widget.onThemeChanged?.call(themeMode);
+
+    setState(() {
+      _themeMode = mode;
+    });
   }
 
   Future<void> _resetPassword() async {
@@ -157,21 +187,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _storageService.clearAllData();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => LockScreen(onThemeChanged: widget.onThemeChanged),
-          ),
-              (route) => false,
+          InstantPageRoute(page: LockScreen(onThemeChanged: widget.onThemeChanged)),
+          (route) => false,
         );
       }
     }
   }
 
-  void _openBackup() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const BackupScreen(),
-      ),
+  Future<void> _openBackup() async {
+    final enteredPassword = await showDialog<String>(
+      context: context,
+      builder: (context) => const _PasswordPromptDialog(),
     );
+
+    if (enteredPassword != null) {
+      final isCorrect = await _storageService.checkPassword(enteredPassword);
+      if (isCorrect && mounted) {
+        Navigator.of(context).push(
+          FastPageRoute(page: const BackupScreen()),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Неверный пароль'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -206,15 +249,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Безопасность
           const _SectionHeader(
             icon: Icons.security_rounded,
             title: 'Безопасность',
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
-
-          // Биометрия
           Container(
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
@@ -235,9 +275,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   subtitle: Text(
-                    _biometricAvailable
-                        ? 'Используйте отпечаток или Face ID для входа'
-                        : 'Биометрия недоступна на устройстве',
+                    !_biometricAvailable
+                        ? 'Биометрия недоступна на устройстве'
+                        : !_hasEnrolledBiometrics
+                        ? 'Биометрия не зарегистрирована'
+                        : 'Используйте отпечаток или Face ID для входа',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -246,7 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   secondary: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: AppColors.primary.withAlpha(25),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -260,17 +302,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Внешний вид
           const _SectionHeader(
             icon: Icons.palette_rounded,
             title: 'Внешний вид',
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
-
           Container(
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
@@ -302,17 +340,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Данные
           const _SectionHeader(
             icon: Icons.storage_rounded,
             title: 'Данные',
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
-
           Container(
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
@@ -325,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.accentBlue.withValues(alpha: 0.1),
+                      color: AppColors.accentBlue.withAlpha(25),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -359,28 +393,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Опасная зона
           const _SectionHeader(
             icon: Icons.warning_rounded,
             title: 'Опасная зона',
             color: AppColors.accentRed,
           ),
           const SizedBox(height: 12),
-
           Container(
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.accentRed.withValues(alpha: 0.3)),
+              border: Border.all(color: AppColors.accentRed.withAlpha(76)),
             ),
             child: ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.accentRed.withValues(alpha: 0.1),
+                  color: AppColors.accentRed.withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -407,22 +437,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 16,
-                color: AppColors.accentRed.withValues(alpha: 0.5),
+                color: AppColors.accentRed.withAlpha(128),
               ),
               onTap: _resetPassword,
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // О приложении
           Center(
             child: Column(
               children: [
                 Icon(
                   Icons.shield_rounded,
                   size: 48,
-                  color: AppColors.primary.withValues(alpha: 0.7),
+                  color: AppColors.primary.withAlpha(178),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -452,7 +479,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 40),
         ],
       ),
@@ -510,8 +536,8 @@ class _ThemeTile extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : AppColors.textMuted.withValues(alpha: 0.1),
+              ? AppColors.primary.withAlpha(25)
+              : AppColors.textMuted.withAlpha(25),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
@@ -536,6 +562,69 @@ class _ThemeTile extends StatelessWidget {
       )
           : null,
       onTap: onTap,
+    );
+  }
+}
+
+class _PasswordPromptDialog extends StatefulWidget {
+  const _PasswordPromptDialog();
+
+  @override
+  State<_PasswordPromptDialog> createState() => _PasswordPromptDialogState();
+}
+
+class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
+  final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: AppColors.cardBackground,
+      title: Text('Введите пароль', style: TextStyle(color: AppColors.textPrimary)),
+      content: TextField(
+        controller: _passwordController,
+        obscureText: !_isPasswordVisible,
+        autofocus: true,
+        style: TextStyle(color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          labelText: 'Пароль',
+          labelStyle: TextStyle(color: AppColors.textSecondary),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary),
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+              color: AppColors.textSecondary,
+            ),
+            onPressed: () {
+              setState(() {
+                _isPasswordVisible = !_isPasswordVisible;
+              });
+            },
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Отмена', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(context).pop(_passwordController.text);
+          },
+          style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+          child: const Text('Подтвердить'),
+        ),
+      ],
     );
   }
 }
