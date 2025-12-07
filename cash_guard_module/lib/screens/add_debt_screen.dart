@@ -309,6 +309,8 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = AnimatedThemeColors.of(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Column(
@@ -389,7 +391,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLighter,
+                          color: themeColors.surfaceLighter,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -400,6 +402,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                 icon: Icons.arrow_downward_rounded,
                                 color: Colors.green,
                                 isSelected: _selectedType == DebtType.borrowed,
+                                themeColors: themeColors,
                                 onTap: () {
                                   setState(() {
                                     _selectedType = DebtType.borrowed;
@@ -413,6 +416,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                 icon: Icons.arrow_upward_rounded,
                                 color: Colors.orange,
                                 isSelected: _selectedType == DebtType.lent,
+                                themeColors: themeColors,
                                 onTap: () {
                                   setState(() {
                                     _selectedType = DebtType.lent;
@@ -426,6 +430,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                 icon: Icons.account_balance_rounded,
                                 color: Colors.red,
                                 isSelected: _selectedType == DebtType.credit,
+                                themeColors: themeColors,
                                 onTap: () {
                                   setState(() {
                                     _selectedType = DebtType.credit;
@@ -445,6 +450,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         label: 'Описание',
                         hint: 'Например: Долг за ремонт',
                         icon: Icons.description_rounded,
+                        themeColors: themeColors,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Введите описание';
@@ -461,6 +467,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         label: _getCreditorDebtorLabel(),
                         hint: 'Например: Иван Иванов',
                         icon: Icons.person_rounded,
+                        themeColors: themeColors,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Введите имя';
@@ -478,6 +485,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         hint: '0.00',
                         icon: Icons.attach_money_rounded,
                         suffix: 'ЅМ',
+                        themeColors: themeColors,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -499,9 +507,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                       if (!_isEditMode) ...[
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.cardBackground,
+                            color: themeColors.cardBackground,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: themeColors.border),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +518,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.account_balance_wallet_rounded,
                                       color: AppColors.primary,
                                       size: 20,
@@ -521,15 +529,15 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
+                                        color: themeColors.textSecondary,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               if (_isLoadingLocations)
-                                Padding(
-                                  padding: const EdgeInsets.all(20),
+                                const Padding(
+                                  padding: EdgeInsets.all(20),
                                   child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                                 )
                               else if (_availableLocations.isEmpty)
@@ -539,7 +547,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                     'Нет доступных источников средств',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: AppColors.textSecondary,
+                                      color: themeColors.textSecondary,
                                     ),
                                   ),
                                 )
@@ -558,7 +566,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                         color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
                                         border: Border(
                                           top: BorderSide(
-                                            color: AppColors.border,
+                                            color: themeColors.border,
                                             width: 1,
                                           ),
                                         ),
@@ -569,7 +577,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                             _getLocationIcon(location.type),
                                             color: isSelected
                                                 ? AppColors.primary
-                                                : AppColors.textSecondary,
+                                                : themeColors.textSecondary,
                                             size: 20,
                                           ),
                                           const SizedBox(width: 12),
@@ -581,12 +589,12 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                                                 color: isSelected
                                                     ? AppColors.primary
-                                                    : AppColors.textPrimary,
+                                                    : themeColors.textPrimary,
                                               ),
                                             ),
                                           ),
                                           if (isSelected)
-                                            Icon(
+                                            const Icon(
                                               Icons.check_circle_rounded,
                                               color: AppColors.primary,
                                               size: 20,
@@ -609,6 +617,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         hint: '0',
                         icon: Icons.percent_rounded,
                         suffix: '%',
+                        themeColors: themeColors,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -625,6 +634,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                               label: 'Дата начала',
                               date: _startDate,
                               onTap: () => _selectDate(context, true),
+                              themeColors: themeColors,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -634,6 +644,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                               date: _dueDate,
                               onTap: () => _selectDate(context, false),
                               isOptional: true,
+                              themeColors: themeColors,
                             ),
                           ),
                         ],
@@ -647,6 +658,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
                         label: 'Заметки (необязательно)',
                         hint: 'Дополнительная информация',
                         icon: Icons.note_rounded,
+                        themeColors: themeColors,
                         maxLines: 3,
                       ),
 
@@ -711,6 +723,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     required String label,
     required String hint,
     required IconData icon,
+    required AnimatedThemeColorsData themeColors,
     String? suffix,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
@@ -719,9 +732,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: themeColors.border),
       ),
       child: TextFormField(
         controller: controller,
@@ -732,22 +745,22 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
+          color: themeColors.textPrimary,
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: AppColors.textSecondary),
+          labelStyle: TextStyle(color: themeColors.textSecondary),
           hintText: hint,
-          hintStyle: TextStyle(color: AppColors.textMuted),
+          hintStyle: TextStyle(color: themeColors.textMuted),
           prefixIcon: Icon(icon, color: AppColors.primary),
           suffixText: suffix,
-          suffixStyle: TextStyle(color: AppColors.textSecondary),
+          suffixStyle: TextStyle(color: themeColors.textSecondary),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: AppColors.cardBackground,
+          fillColor: themeColors.cardBackground,
           contentPadding: const EdgeInsets.all(20),
         ),
       ),
@@ -761,6 +774,7 @@ class _TypeButton extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final VoidCallback onTap;
+  final AnimatedThemeColorsData themeColors;
 
   const _TypeButton({
     required this.label,
@@ -768,6 +782,7 @@ class _TypeButton extends StatelessWidget {
     required this.color,
     required this.isSelected,
     required this.onTap,
+    required this.themeColors,
   });
 
   @override
@@ -777,15 +792,15 @@ class _TypeButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.cardBackground : Colors.transparent,
+          color: isSelected ? themeColors.cardBackground : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: isSelected ? Border.all(color: AppColors.border) : null,
+          border: isSelected ? Border.all(color: themeColors.border) : null,
         ),
         child: Column(
           children: [
             Icon(
               icon,
-              color: isSelected ? color : AppColors.textMuted,
+              color: isSelected ? color : themeColors.textMuted,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -794,7 +809,7 @@ class _TypeButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? color : AppColors.textMuted,
+                color: isSelected ? color : themeColors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -810,11 +825,13 @@ class _DateSelector extends StatelessWidget {
   final DateTime? date;
   final VoidCallback onTap;
   final bool isOptional;
+  final AnimatedThemeColorsData themeColors;
 
   const _DateSelector({
     required this.label,
     required this.date,
     required this.onTap,
+    required this.themeColors,
     this.isOptional = false,
   });
 
@@ -825,9 +842,9 @@ class _DateSelector extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: themeColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: themeColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,13 +853,13 @@ class _DateSelector extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: themeColors.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.calendar_today_rounded,
                   color: AppColors.primary,
                   size: 20,
@@ -855,7 +872,7 @@ class _DateSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: date != null ? AppColors.textPrimary : AppColors.textMuted,
+                    color: date != null ? themeColors.textPrimary : themeColors.textMuted,
                   ),
                 ),
               ],

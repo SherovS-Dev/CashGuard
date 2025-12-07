@@ -506,7 +506,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
           child: CircularProgressIndicator(color: AppColors.primary),
@@ -521,7 +521,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: AppColors.primary),
+              const CircularProgressIndicator(color: AppColors.primary),
               const SizedBox(height: 24),
               Text(
                 'Восстановление данных...',
@@ -731,86 +731,96 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                       children: [
                         // Кнопка восстановления (только для нового пользователя)
                         if (!_isEditMode) ...[
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.blue.shade400, Colors.blue.shade600],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _restoreFromBackup,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                          Icons.restore_rounded,
-                                          color: Colors.white,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Восстановить данные',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
+                          Builder(
+                            builder: (context) {
+                              final themeColors = AnimatedThemeColors.of(context);
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.blue.shade400, Colors.blue.shade600],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _restoreFromBackup,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.3),
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
-                                            SizedBox(height: 2),
-                                            Text(
-                                              'Загрузите резервную копию',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.white,
-                                              ),
+                                            child: const Icon(
+                                              Icons.restore_rounded,
+                                              color: Colors.white,
+                                              size: 22,
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          const Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Восстановить данные',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  'Загрузите резервную копию',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ],
                                       ),
-                                      const Icon(
-                                        Icons.arrow_forward_ios_rounded,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
-                          Row(
-                            children: [
-                              const Expanded(child: Divider()),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  'или создайте новый профиль',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                          Builder(
+                            builder: (context) {
+                              final themeColors = AnimatedThemeColors.of(context);
+                              return Row(
+                                children: [
+                                  Expanded(child: Divider(color: themeColors.border)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    child: Text(
+                                      'или создайте новый профиль',
+                                      style: TextStyle(
+                                        color: themeColors.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              const Expanded(child: Divider()),
-                            ],
+                                  Expanded(child: Divider(color: themeColors.border)),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -955,42 +965,47 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                         const SizedBox(height: 12),
 
                         if (_cashLocations.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.add_location_alt_rounded,
-                                  size: 28,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Нет дополнительных мест',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade800,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                          Builder(
+                            builder: (context) {
+                              final themeColors = AnimatedThemeColors.of(context);
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: themeColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: themeColors.border,
+                                    width: 1,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Например: в сейфе, в банке и т.д.',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 11,
-                                  ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.add_location_alt_rounded,
+                                      size: 28,
+                                      color: themeColors.textMuted,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Нет дополнительных мест',
+                                      style: TextStyle(
+                                        color: themeColors.textPrimary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Например: в сейфе, в банке и т.д.',
+                                      style: TextStyle(
+                                        color: themeColors.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           )
                         else
                           Builder(
@@ -1000,13 +1015,14 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                   .toList();
 
                               if (visibleLocations.isEmpty) {
+                                final themeColors = AnimatedThemeColors.of(context);
                                 return Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
+                                    color: themeColors.surface,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
+                                      color: themeColors.border,
                                       width: 1,
                                     ),
                                   ),
@@ -1015,13 +1031,13 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Icon(
                                         Icons.add_location_alt_rounded,
                                         size: 28,
-                                        color: Colors.grey.shade600,
+                                        color: themeColors.textMuted,
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
                                         'Нет дополнительных мест',
                                         style: TextStyle(
-                                          color: Colors.grey.shade800,
+                                          color: themeColors.textPrimary,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1030,7 +1046,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Text(
                                         'Например: в сейфе, в банке и т.д.',
                                         style: TextStyle(
-                                          color: Colors.grey.shade700,
+                                          color: themeColors.textSecondary,
                                           fontSize: 11,
                                         ),
                                       ),
@@ -1112,42 +1128,47 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
                         // Cards List
                         if (_bankCards.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.credit_card_off_rounded,
-                                  size: 28,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Нет добавленных карт',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade800,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                          Builder(
+                            builder: (context) {
+                              final themeColors = AnimatedThemeColors.of(context);
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: themeColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: themeColors.border,
+                                    width: 1,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Нажмите + чтобы добавить карту',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 11,
-                                  ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.credit_card_off_rounded,
+                                      size: 28,
+                                      color: themeColors.textMuted,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Нет добавленных карт',
+                                      style: TextStyle(
+                                        color: themeColors.textPrimary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Нажмите + чтобы добавить карту',
+                                      style: TextStyle(
+                                        color: themeColors.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           )
                         else
                           Builder(
@@ -1157,13 +1178,14 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                   .toList();
 
                               if (visibleCards.isEmpty) {
+                                final themeColors = AnimatedThemeColors.of(context);
                                 return Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
+                                    color: themeColors.surface,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
+                                      color: themeColors.border,
                                       width: 1,
                                     ),
                                   ),
@@ -1172,13 +1194,13 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Icon(
                                         Icons.credit_card_off_rounded,
                                         size: 28,
-                                        color: Colors.grey.shade600,
+                                        color: themeColors.textMuted,
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
                                         'Нет добавленных карт',
                                         style: TextStyle(
-                                          color: Colors.grey.shade800,
+                                          color: themeColors.textPrimary,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1187,7 +1209,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Text(
                                         'Нажмите + чтобы добавить карту',
                                         style: TextStyle(
-                                          color: Colors.grey.shade700,
+                                          color: themeColors.textSecondary,
                                           fontSize: 11,
                                         ),
                                       ),
@@ -1269,42 +1291,47 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
 
                         // Wallets List
                         if (_mobileWallets.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.phonelink_off_rounded,
-                                  size: 28,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Нет мобильных кошельков',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade800,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                          Builder(
+                            builder: (context) {
+                              final themeColors = AnimatedThemeColors.of(context);
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: themeColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: themeColors.border,
+                                    width: 1,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Нажмите + чтобы добавить кошелек',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 11,
-                                  ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.phonelink_off_rounded,
+                                      size: 28,
+                                      color: themeColors.textMuted,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Нет мобильных кошельков',
+                                      style: TextStyle(
+                                        color: themeColors.textPrimary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Нажмите + чтобы добавить кошелек',
+                                      style: TextStyle(
+                                        color: themeColors.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           )
                         else
                           Builder(
@@ -1314,13 +1341,14 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                   .toList();
 
                               if (visibleWallets.isEmpty) {
+                                final themeColors = AnimatedThemeColors.of(context);
                                 return Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
+                                    color: themeColors.surface,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
+                                      color: themeColors.border,
                                       width: 1,
                                     ),
                                   ),
@@ -1329,13 +1357,13 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Icon(
                                         Icons.phonelink_off_rounded,
                                         size: 28,
-                                        color: Colors.grey.shade600,
+                                        color: themeColors.textMuted,
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
                                         'Нет мобильных кошельков',
                                         style: TextStyle(
-                                          color: Colors.grey.shade800,
+                                          color: themeColors.textPrimary,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1344,7 +1372,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> with SingleTickerProv
                                       Text(
                                         'Нажмите + чтобы добавить кошелек',
                                         style: TextStyle(
-                                          color: Colors.grey.shade700,
+                                          color: themeColors.textSecondary,
                                           fontSize: 11,
                                         ),
                                       ),

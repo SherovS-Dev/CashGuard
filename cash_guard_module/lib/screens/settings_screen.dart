@@ -219,6 +219,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = AnimatedThemeColors.of(context);
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
@@ -238,11 +240,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: themeColors.textPrimary,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_rounded, color: themeColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -257,9 +259,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: themeColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: themeColors.border),
             ),
             child: Column(
               children: [
@@ -271,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: themeColors.textPrimary,
                     ),
                   ),
                   subtitle: Text(
@@ -282,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : 'Используйте отпечаток или Face ID для входа',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: themeColors.textSecondary,
                     ),
                   ),
                   secondary: Container(
@@ -311,9 +313,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: themeColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: themeColors.border),
             ),
             child: Column(
               children: [
@@ -322,20 +324,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Светлая тема',
                   isSelected: _themeMode == 'light',
                   onTap: () => _changeTheme('light'),
+                  themeColors: themeColors,
                 ),
-                Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: themeColors.border),
                 _ThemeTile(
                   icon: Icons.dark_mode_rounded,
                   title: 'Темная тема',
                   isSelected: _themeMode == 'dark',
                   onTap: () => _changeTheme('dark'),
+                  themeColors: themeColors,
                 ),
-                Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: themeColors.border),
                 _ThemeTile(
                   icon: Icons.brightness_auto_rounded,
                   title: 'Системная тема',
                   isSelected: _themeMode == 'system',
                   onTap: () => _changeTheme('system'),
+                  themeColors: themeColors,
                 ),
               ],
             ),
@@ -349,9 +354,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: themeColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: themeColors.border),
             ),
             child: Column(
               children: [
@@ -373,20 +378,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: themeColors.textPrimary,
                     ),
                   ),
                   subtitle: Text(
                     'Резервное копирование',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: themeColors.textSecondary,
                     ),
                   ),
                   trailing: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
-                    color: AppColors.textMuted,
+                    color: themeColors.textMuted,
                   ),
                   onTap: _openBackup,
                 ),
@@ -402,7 +407,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: themeColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.accentRed.withAlpha(76)),
             ),
@@ -431,7 +436,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Удалить пароль и все данные',
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textSecondary,
+                  color: themeColors.textSecondary,
                 ),
               ),
               trailing: Icon(
@@ -457,15 +462,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: themeColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Версия 1.0.0',
+                  'Версия 3.0.0',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: themeColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -473,7 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Защита ваших финансов',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textMuted,
+                    color: themeColors.textMuted,
                   ),
                 ),
               ],
@@ -521,12 +526,14 @@ class _ThemeTile extends StatelessWidget {
   final String title;
   final bool isSelected;
   final VoidCallback onTap;
+  final AnimatedThemeColorsData themeColors;
 
   const _ThemeTile({
     required this.icon,
     required this.title,
     required this.isSelected,
     required this.onTap,
+    required this.themeColors,
   });
 
   @override
@@ -537,12 +544,12 @@ class _ThemeTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withAlpha(25)
-              : AppColors.textMuted.withAlpha(25),
+              : themeColors.textMuted.withAlpha(25),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           icon,
-          color: isSelected ? AppColors.primary : AppColors.textMuted,
+          color: isSelected ? AppColors.primary : themeColors.textMuted,
           size: 24,
         ),
       ),
@@ -551,7 +558,7 @@ class _ThemeTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 15,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+          color: isSelected ? AppColors.primary : themeColors.textPrimary,
         ),
       ),
       trailing: isSelected
@@ -579,21 +586,23 @@ class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = AnimatedThemeColors.of(context);
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: AppColors.cardBackground,
-      title: Text('Введите пароль', style: TextStyle(color: AppColors.textPrimary)),
+      backgroundColor: themeColors.cardBackground,
+      title: Text('Введите пароль', style: TextStyle(color: themeColors.textPrimary)),
       content: TextField(
         controller: _passwordController,
         obscureText: !_isPasswordVisible,
         autofocus: true,
-        style: TextStyle(color: AppColors.textPrimary),
+        style: TextStyle(color: themeColors.textPrimary),
         decoration: InputDecoration(
           labelText: 'Пароль',
-          labelStyle: TextStyle(color: AppColors.textSecondary),
+          labelStyle: TextStyle(color: themeColors.textSecondary),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: themeColors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -602,7 +611,7 @@ class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
           suffixIcon: IconButton(
             icon: Icon(
               _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-              color: AppColors.textSecondary,
+              color: themeColors.textSecondary,
             ),
             onPressed: () {
               setState(() {
@@ -615,7 +624,7 @@ class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Отмена', style: TextStyle(color: themeColors.textSecondary)),
         ),
         FilledButton(
           onPressed: () {

@@ -48,9 +48,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.transparent,
-        body: const Center(
+        body: Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
@@ -166,6 +166,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -214,7 +215,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: sortedKeys.length,
       itemBuilder: (context, index) {
         final key = sortedKeys[index];
@@ -222,7 +223,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         final date = DateTime.parse(snapshot['month']);
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 12),
           child: _SnapshotCard(
             title: '${_getMonthName(date.month)} ${date.year}',
             snapshot: snapshot,
@@ -275,7 +276,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: sortedKeys.length,
       itemBuilder: (context, index) {
         final key = sortedKeys[index];
@@ -283,7 +284,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         final date = DateTime.parse(snapshot['year']);
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 12),
           child: _SnapshotCard(
             title: '${date.year} год',
             snapshot: snapshot,
@@ -317,6 +318,15 @@ class _SnapshotCard extends StatelessWidget {
     required this.isMonthly,
   });
 
+  String _shortCurrency(double amount) {
+    if (amount.abs() >= 1000000) {
+      return '${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount.abs() >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(1)}K';
+    }
+    return amount.toStringAsFixed(0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final startBalance = (snapshot['startBalance'] ?? 0).toDouble();
@@ -324,236 +334,128 @@ class _SnapshotCard extends StatelessWidget {
     final income = (snapshot['income'] ?? 0).toDouble();
     final expenses = (snapshot['expenses'] ?? 0).toDouble();
     final transactionCount = snapshot['transactionCount'] ?? 0;
+    final balanceChange = endBalance - startBalance;
 
     final startBorrowedDebts = (snapshot['startBorrowedDebts'] ?? 0).toDouble();
     final endBorrowedDebts = (snapshot['endBorrowedDebts'] ?? 0).toDouble();
     final startLentDebts = (snapshot['startLentDebts'] ?? 0).toDouble();
     final endLentDebts = (snapshot['endLentDebts'] ?? 0).toDouble();
 
-    final balanceChange = endBalance - startBalance;
-
     return Container(
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primaryDark,
-                ],
-              ),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          // Row 1: Title + Balance change
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '$transactionCount ${isMonthly ? "транзакций" : "транзакций за год"}',
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _shortCurrency(startBalance),
+                style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              ),
+              Icon(Icons.arrow_right_alt, size: 14, color: AppColors.textMuted),
+              Text(
+                '${_shortCurrency(endBalance)}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (balanceChange >= 0 ? AppColors.accentGreen : AppColors.accentRed)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${balanceChange >= 0 ? "+" : ""}${_shortCurrency(balanceChange)}',
                   style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Баланс
-                _InfoRow(
-                  label: 'Баланс в начале',
-                  value: formatCurrency(startBalance),
-                  valueColor: AppColors.textSecondary,
-                ),
-                const SizedBox(height: 12),
-                _InfoRow(
-                  label: 'Баланс в конце',
-                  value: formatCurrency(endBalance),
-                  valueColor: AppColors.primary,
-                ),
-                const SizedBox(height: 12),
-                _InfoRow(
-                  label: 'Изменение',
-                  value: '${balanceChange >= 0 ? "+" : ""}${formatCurrency(balanceChange)}',
-                  valueColor: balanceChange >= 0 ? AppColors.accentGreen : AppColors.accentRed,
-                ),
-
-                Divider(height: 32, color: AppColors.border),
-
-                // Доходы и расходы
-                Row(
-                  children: [
-                    Expanded(
-                      child: _MiniStatCard(
-                        label: 'Доходы',
-                        value: formatCurrency(income),
-                        color: AppColors.accentGreen,
-                        icon: Icons.arrow_downward_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MiniStatCard(
-                        label: 'Расходы',
-                        value: formatCurrency(expenses),
-                        color: AppColors.accentRed,
-                        icon: Icons.arrow_upward_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-
-                Divider(height: 32, color: AppColors.border),
-
-                // Долги
-                Text(
-                  'Долги',
-                  style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: balanceChange >= 0 ? AppColors.accentGreen : AppColors.accentRed,
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // Мне должны
-                _InfoRow(
-                  label: 'Мне должны (начало)',
-                  value: formatCurrency(startBorrowedDebts),
-                  valueColor: AppColors.textSecondary,
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  label: 'Мне должны (конец)',
-                  value: formatCurrency(endBorrowedDebts),
-                  valueColor: AppColors.accentGreen,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Я должен
-                _InfoRow(
-                  label: 'Я должен (начало)',
-                  value: formatCurrency(startLentDebts),
-                  valueColor: AppColors.textSecondary,
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  label: 'Я должен (конец)',
-                  value: formatCurrency(endLentDebts),
-                  valueColor: AppColors.accentRed,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color valueColor;
-
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: valueColor,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MiniStatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-
-  const _MiniStatCard({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          // Row 2: Income, Expense, Debts info
+          Row(
+            children: [
+              // Income
+              const Icon(Icons.south_west, size: 12, color: AppColors.accentGreen),
+              const SizedBox(width: 2),
+              Text(
+                _shortCurrency(income),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentGreen,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Expense
+              const Icon(Icons.north_east, size: 12, color: AppColors.accentRed),
+              const SizedBox(width: 2),
+              Text(
+                _shortCurrency(expenses),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentRed,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Divider
+              Container(width: 1, height: 12, color: AppColors.border),
+              const SizedBox(width: 10),
+              // Lent (Мне должны)
+              Text('Дали:', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              const SizedBox(width: 3),
+              Text(
+                _shortCurrency(endBorrowedDebts),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentGreen),
+              ),
+              const SizedBox(width: 8),
+              // Borrowed (Я должен)
+              Text('Взял:', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              const SizedBox(width: 3),
+              Text(
+                _shortCurrency(endLentDebts),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentRed),
+              ),
+              const Spacer(),
+              // Transaction count
+              Text(
+                '$transactionCount тр.',
+                style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+              ),
+            ],
           ),
         ],
       ),

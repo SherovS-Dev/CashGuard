@@ -448,9 +448,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.transparent,
-        body: const Center(
+        body: Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );

@@ -475,6 +475,115 @@ class AppTheme {
   }
 }
 
+/// Animated theme colors data class
+class AnimatedThemeColorsData {
+  final Color background;
+  final Color surface;
+  final Color surfaceLighter;
+  final Color cardBackground;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color border;
+  final Color borderLighter;
+  final List<Color> backgroundGradient;
+
+  const AnimatedThemeColorsData({
+    required this.background,
+    required this.surface,
+    required this.surfaceLighter,
+    required this.cardBackground,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+    required this.border,
+    required this.borderLighter,
+    required this.backgroundGradient,
+  });
+
+  factory AnimatedThemeColorsData.dark() {
+    return AnimatedThemeColorsData(
+      background: AppColors.backgroundDark,
+      surface: AppColors.surfaceDark,
+      surfaceLighter: AppColors.surfaceLightDark,
+      cardBackground: AppColors.cardBackgroundDark,
+      textPrimary: AppColors.textPrimaryDark,
+      textSecondary: AppColors.textSecondaryDark,
+      textMuted: AppColors.textMutedDark,
+      border: AppColors.borderDark,
+      borderLighter: AppColors.borderLightDark,
+      backgroundGradient: AppColors.backgroundGradientDark,
+    );
+  }
+
+  factory AnimatedThemeColorsData.light() {
+    return AnimatedThemeColorsData(
+      background: AppColors.backgroundLight,
+      surface: AppColors.surfaceLight,
+      surfaceLighter: AppColors.surfaceLightLight,
+      cardBackground: AppColors.cardBackgroundLight,
+      textPrimary: AppColors.textPrimaryLight,
+      textSecondary: AppColors.textSecondaryLight,
+      textMuted: AppColors.textMutedLight,
+      border: AppColors.borderLight,
+      borderLighter: AppColors.borderLightLight,
+      backgroundGradient: AppColors.backgroundGradientLight,
+    );
+  }
+
+  static AnimatedThemeColorsData lerp(AnimatedThemeColorsData a, AnimatedThemeColorsData b, double t) {
+    return AnimatedThemeColorsData(
+      background: Color.lerp(a.background, b.background, t)!,
+      surface: Color.lerp(a.surface, b.surface, t)!,
+      surfaceLighter: Color.lerp(a.surfaceLighter, b.surfaceLighter, t)!,
+      cardBackground: Color.lerp(a.cardBackground, b.cardBackground, t)!,
+      textPrimary: Color.lerp(a.textPrimary, b.textPrimary, t)!,
+      textSecondary: Color.lerp(a.textSecondary, b.textSecondary, t)!,
+      textMuted: Color.lerp(a.textMuted, b.textMuted, t)!,
+      border: Color.lerp(a.border, b.border, t)!,
+      borderLighter: Color.lerp(a.borderLighter, b.borderLighter, t)!,
+      backgroundGradient: [
+        Color.lerp(a.backgroundGradient[0], b.backgroundGradient[0], t)!,
+        Color.lerp(a.backgroundGradient[1], b.backgroundGradient[1], t)!,
+        Color.lerp(a.backgroundGradient[2], b.backgroundGradient[2], t)!,
+      ],
+    );
+  }
+}
+
+/// InheritedWidget to provide animated theme colors to descendants
+class AnimatedThemeColors extends InheritedWidget {
+  final AnimatedThemeColorsData colors;
+
+  const AnimatedThemeColors({
+    super.key,
+    required this.colors,
+    required super.child,
+  });
+
+  static AnimatedThemeColorsData of(BuildContext context) {
+    final widget = context.dependOnInheritedWidgetOfExactType<AnimatedThemeColors>();
+    if (widget != null) {
+      return widget.colors;
+    }
+    // Fallback to static colors if not in animated context
+    return AppColors.isDarkMode
+        ? AnimatedThemeColorsData.dark()
+        : AnimatedThemeColorsData.light();
+  }
+
+  /// Check if AnimatedThemeColors is available in the widget tree
+  static AnimatedThemeColorsData? maybeOf(BuildContext context) {
+    final widget = context.dependOnInheritedWidgetOfExactType<AnimatedThemeColors>();
+    return widget?.colors;
+  }
+
+  @override
+  bool updateShouldNotify(AnimatedThemeColors oldWidget) {
+    return colors != oldWidget.colors;
+  }
+}
+
 /// Widget that provides animated gradient background based on current theme
 class GradientBackground extends StatefulWidget {
   final Widget child;
@@ -536,21 +645,22 @@ class _GradientBackgroundState extends State<GradientBackground>
       animation: _animation,
       builder: (context, child) {
         final value = _animation.value;
-        final colors = [
-          Color.lerp(AppColors.backgroundGradientLight[0], AppColors.backgroundGradientDark[0], value)!,
-          Color.lerp(AppColors.backgroundGradientLight[1], AppColors.backgroundGradientDark[1], value)!,
-          Color.lerp(AppColors.backgroundGradientLight[2], AppColors.backgroundGradientDark[2], value)!,
-        ];
+        final lightColors = AnimatedThemeColorsData.light();
+        final darkColors = AnimatedThemeColorsData.dark();
+        final animatedColors = AnimatedThemeColorsData.lerp(lightColors, darkColors, value);
 
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: colors,
+        return AnimatedThemeColors(
+          colors: animatedColors,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: animatedColors.backgroundGradient,
+              ),
             ),
+            child: child,
           ),
-          child: child,
         );
       },
       child: widget.child,
