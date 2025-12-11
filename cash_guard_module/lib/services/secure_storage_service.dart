@@ -49,6 +49,19 @@ class SecureStorageService {
     return mode ?? 'system'; // По умолчанию системная тема
   }
 
+  // ========== НАСТРОЙКИ ЯЗЫКА ==========
+
+  /// Установить язык приложения ('en', 'ru', 'tg')
+  Future<void> setLanguage(String languageCode) async {
+    await _secureStorage.write(key: 'app_language', value: languageCode);
+  }
+
+  /// Получить текущий язык приложения
+  Future<String> getLanguage() async {
+    final language = await _secureStorage.read(key: 'app_language');
+    return language ?? 'ru'; // По умолчанию русский
+  }
+
   // ========== РАБОТА С ПАРОЛЕМ ==========
 
   String _hashPassword(String password) {

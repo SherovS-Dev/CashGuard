@@ -14,12 +14,20 @@ class TransactionsTab extends StatefulWidget {
   State<TransactionsTab> createState() => TransactionsTabState();
 }
 
-class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliveClientMixin {
+class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   final _storageService = SecureStorageService();
+  final ScrollController _scrollController = ScrollController();
 
   List<Transaction> _transactions = [];
   double _initialBalance = 0;
   bool _isLoading = true;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _headerAnimationController;
+  late Animation<Offset> _headerSlideAnimation;
+
+  bool _showFixedHeader = false;
+  double _lastScrollOffset = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -27,7 +35,65 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeInOut,
+    ));
+
+    _scrollController.addListener(_onScroll);
     _loadData();
+  }
+
+  void _onScroll() {
+    final currentOffset = _scrollController.offset;
+    final scrollingDown = currentOffset > _lastScrollOffset;
+    final scrollingUp = currentOffset < _lastScrollOffset;
+
+    // Показываем хедер когда проскроллили больше 200px
+    if (currentOffset > 200) {
+      if (!_showFixedHeader) {
+        setState(() => _showFixedHeader = true);
+        _headerAnimationController.forward();
+      } else if (scrollingDown && _headerAnimationController.value == 1) {
+        // Скрываем при скролле вниз
+        _headerAnimationController.reverse();
+      } else if (scrollingUp && _headerAnimationController.value == 0) {
+        // Показываем при скролле вверх
+        _headerAnimationController.forward();
+      }
+    } else {
+      if (_showFixedHeader) {
+        setState(() => _showFixedHeader = false);
+        _headerAnimationController.reverse();
+      }
+    }
+
+    _lastScrollOffset = currentOffset;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _animationController.dispose();
+    _headerAnimationController.dispose();
+    super.dispose();
   }
 
   // Публичный метод для обновления данных
@@ -48,6 +114,7 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
         _initialBalance = initialBalance;
         _isLoading = false;
       });
+      _animationController.forward();
     }
   }
 
@@ -302,83 +369,6 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
     }
   }
 
-  Future<void> _deleteTransaction(Transaction transaction) async {
-    if (transaction.status == TransactionStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Отмененные транзакции нельзя удалить'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.warning_rounded, color: Colors.red.shade700),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Удалить транзакцию?')),
-          ],
-        ),
-        content: Text(
-          transaction.type == TransactionType.transfer
-              ? 'Вы уверены, что хотите удалить "${transaction.description}"?\n\nБаланс будет восстановлен.'
-              : 'Вы уверены, что хотите удалить "${transaction.description}"?\n\nБаланс в ${transaction.location.name} будет обновлен.',
-          style: const TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldDelete == true) {
-      final user = await _storageService.getUserData();
-      if (user != null) {
-        User updatedUser = user;
-
-        if (transaction.type == TransactionType.transfer) {
-          updatedUser = _updateBalance(updatedUser, transaction.location, transaction.amount);
-          updatedUser = _updateBalance(updatedUser, transaction.transferTo!, -transaction.amount);
-        } else {
-          final amountChange = transaction.type == TransactionType.income
-              ? -transaction.amount
-              : transaction.amount;
-
-          updatedUser = _updateBalance(updatedUser, transaction.location, amountChange);
-        }
-
-        await _storageService.saveUserData(updatedUser);
-      }
-
-      await _storageService.deleteTransaction(transaction.id);
-      _loadData();
-    }
-  }
 
   User _updateBalance(User user, TransactionLocation location, double amountChange) {
     switch (location.type) {
@@ -464,9 +454,12 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
       );
     }
 
-    return CustomScrollView(
-      slivers: [
-        // Хедер с градиентом
+    return Stack(
+      children: [
+        CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+        // Хедер с градиентом (продлен вниз на 30px для округления)
         SliverToBoxAdapter(
           child: Container(
             decoration: const BoxDecoration(
@@ -479,68 +472,84 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
                 ],
               ),
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Транзакции',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
+            child: Column(
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Доходы',
-                            amount: _formatCurrency(_totalIncome),
-                            icon: Icons.arrow_downward_rounded,
-                            color: AppColors.accentGreen,
+                        const Text(
+                          'Транзакции',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Расходы',
-                            amount: _formatCurrency(_totalExpenses),
-                            icon: Icons.arrow_upward_rounded,
-                            color: AppColors.accentRed,
-                          ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Доходы',
+                                amount: _formatCurrency(_totalIncome),
+                                icon: Icons.arrow_downward_rounded,
+                                color: AppColors.accentGreen,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Расходы',
+                                amount: _formatCurrency(_totalExpenses),
+                                icon: Icons.arrow_upward_rounded,
+                                color: AppColors.accentRed,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                // Дополнительное пространство для округления
+                const SizedBox(height: 30),
+              ],
             ),
           ),
         ),
 
+        // Закругленное начало контента (перекрытие хедера)
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                const Icon(Icons.history_rounded, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'История (3 месяца)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.history_rounded, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'История (3 месяца)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -549,38 +558,41 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_rounded,
-                      size: 64,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Нет транзакций',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Добавьте первую транзакцию',
-                      style: TextStyle(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Container(
+                  padding: const EdgeInsets.all(40),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.receipt_long_rounded,
+                        size: 64,
                         color: AppColors.textMuted,
-                        fontSize: 13,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Нет транзакций',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Добавьте первую транзакцию',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -592,45 +604,16 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final transaction = _transactions[index];
-                  if (transaction.status == TransactionStatus.cancelled) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _TransactionCard(
-                        transaction: transaction,
-                        onCancel: null,
-                        onDelete: null,
-                      ),
-                    );
-                  }
-
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Dismissible(
-                      key: Key(transaction.id),
-                      direction: DismissDirection.endToStart,
-                      confirmDismiss: (_) async {
-                        await _deleteTransaction(transaction);
-                        return false;
-                      },
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentRed,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.delete_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
                       child: _TransactionCard(
                         transaction: transaction,
-                        onCancel: transaction.canBeCancelled
+                        onCancel: transaction.canBeCancelled &&
+                                 transaction.status != TransactionStatus.cancelled
                             ? () => _cancelTransaction(transaction)
                             : null,
-                        onDelete: () => _deleteTransaction(transaction),
                       ),
                     ),
                   );
@@ -642,6 +625,33 @@ class TransactionsTabState extends State<TransactionsTab> with AutomaticKeepAliv
 
         const SliverToBoxAdapter(
           child: SizedBox(height: 140),
+        ),
+          ],
+        ),
+
+        // Размытие снизу
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  stops: const [0.0, 0.3, 0.6, 1.0],
+                  colors: [
+                    AppColors.background,
+                    AppColors.background.withValues(alpha: 0.95),
+                    AppColors.background.withValues(alpha: 0.6),
+                    AppColors.background.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -709,12 +719,10 @@ class _StatCard extends StatelessWidget {
 class _TransactionCard extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback? onCancel;
-  final VoidCallback? onDelete;
 
   const _TransactionCard({
     required this.transaction,
     this.onCancel,
-    this.onDelete,
   });
 
   String _formatCurrency(double amount) {
@@ -745,261 +753,278 @@ class _TransactionCard extends StatelessWidget {
         ? AppColors.textMuted
         : (isTransfer ? AppColors.accentBlue : (isIncome ? AppColors.accentGreen : AppColors.accentRed));
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isCancelled ? AppColors.surface : AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isCancelled
-                      ? Icons.cancel_rounded
-                      : (isTransfer
-                      ? Icons.swap_horiz_rounded
-                      : (isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded)),
-                  color: color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            transaction.description,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              decoration: isCancelled ? TextDecoration.lineThrough : null,
-                              color: isCancelled ? AppColors.textMuted : AppColors.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isCancelled) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'ОТМЕНЕНА',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDateTime(transaction.date),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                isTransfer
-                    ? _formatCurrency(transaction.amount)
-                    : '${isIncome ? '+' : '-'} ${_formatCurrency(transaction.amount)}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  decoration: isCancelled ? TextDecoration.lineThrough : null,
-                ),
-              ),
-            ],
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: isCancelled ? AppColors.surface : AppColors.cardBackground,
+            borderRadius: onCancel != null && !isCancelled
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  )
+                : BorderRadius.circular(20),
+            border: Border.all(
+              color: isCancelled ? AppColors.border : color.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
-
-          const SizedBox(height: 12),
-
-          if (isTransfer)
-            Column(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getLocationIcon(transaction.location.type),
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                transaction.location.name,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   child: Icon(
-                    Icons.arrow_downward_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
+                    isCancelled
+                        ? Icons.cancel_rounded
+                        : (isTransfer
+                        ? Icons.swap_horiz_rounded
+                        : (isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded)),
+                    color: color,
+                    size: 22,
                   ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isCancelled ? AppColors.surface : AppColors.accentBlue.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isCancelled ? AppColors.border : AppColors.accentBlue.withValues(alpha: 0.3),
-                          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        transaction.description,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          decoration: isCancelled ? TextDecoration.lineThrough : null,
+                          color: isCancelled ? AppColors.textMuted : AppColors.textPrimary,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getLocationIcon(transaction.transferTo!.type),
-                              size: 16,
-                              color: isCancelled ? AppColors.textMuted : AppColors.accentBlue,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                transaction.transferTo!.name,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isCancelled ? AppColors.textMuted : AppColors.accentBlue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _formatDateTime(transaction.date),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      isTransfer
+                          ? _formatCurrency(transaction.amount)
+                          : '${isIncome ? '+' : '-'} ${_formatCurrency(transaction.amount)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                      ),
                     ),
+                    if (isCancelled) ...[
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.textMuted.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'ОТМЕНЕНА',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
+            ),
+            const SizedBox(height: 10),
+            if (isTransfer)
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getLocationIcon(transaction.location.type),
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              transaction.location.name,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isCancelled
+                            ? AppColors.surface
+                            : AppColors.accentBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getLocationIcon(transaction.transferTo!.type),
+                            size: 14,
+                            color: isCancelled ? AppColors.textMuted : AppColors.accentBlue,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              transaction.transferTo!.name,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isCancelled ? AppColors.textMuted : AppColors.accentBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    _getLocationIcon(transaction.location.type),
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    transaction.location.name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _getLocationIcon(transaction.location.type),
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          transaction.location.name,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
+              ],
             ),
-
-          if (onCancel != null && !isCancelled) ...[
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.border),
-                ),
+          ),
+        ),
+        // Добавляем кнопку отмены снаружи, чтобы не влияла на высоту основной части карточки
+        if (onCancel != null && !isCancelled)
+          Container(
+            decoration: BoxDecoration(
+              color: isCancelled ? AppColors.surface : AppColors.cardBackground,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onCancel,
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(16),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.cancel_outlined,
-                          color: AppColors.accentOrange,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Отменить транзакцию',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+              border: Border.all(
+                color: isCancelled ? AppColors.border : color.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  height: 1,
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onCancel,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cancel_outlined,
                             color: AppColors.accentOrange,
+                            size: 18,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'Отменить транзакцию',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accentOrange,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 

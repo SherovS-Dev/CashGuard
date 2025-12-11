@@ -83,9 +83,10 @@ class Transaction {
     if (status == TransactionStatus.cancelled) return false;
 
     final now = DateTime.now();
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    final hoursSinceTransaction = now.difference(date).inHours;
 
-    return now.isBefore(endOfDay) || now.isAtSameMomentAs(endOfDay);
+    // Можно отменить в течение 24 часов (1 дня) с момента создания
+    return hoursSinceTransaction < 24;
   }
 
   Map<String, dynamic> toJson() {

@@ -4,6 +4,7 @@ import '../services/biometric_auth_service.dart';
 import '../constants/app_theme.dart';
 import '../main.dart';
 import '../utils/page_transitions.dart';
+import '../l10n/app_localizations.dart';
 import 'backup_screen.dart';
 import 'lock_screen.dart';
 
@@ -24,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricAvailable = false;
   bool _hasEnrolledBiometrics = false;
   String _themeMode = 'system';
+  String _language = 'ru';
   bool _isLoading = true;
 
   @override
@@ -37,26 +39,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final hasEnrolledBiometrics = await _biometricService.hasEnrolledBiometrics();
     final biometricEnabled = await _storageService.getBiometricEnabled();
     final themeMode = await _storageService.getThemeMode();
+    final language = await _storageService.getLanguage();
 
     setState(() {
       _biometricAvailable = biometricAvailable;
       _hasEnrolledBiometrics = hasEnrolledBiometrics;
       _biometricEnabled = biometricEnabled;
       _themeMode = themeMode;
+      _language = language;
       _isLoading = false;
     });
   }
 
-  Future<void> _toggleBiometric(bool value) async {
+  Future<void> _toggleBiometric(bool value, AppLocalizations l10n) async {
     if (value && !_hasEnrolledBiometrics) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text('Сначала зарегистрируйте биометрические данные в настройках вашего устройства.'),
+                child: Text(l10n.biometricEnrollFirst),
               ),
             ],
           ),
@@ -68,13 +72,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!_biometricAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text('Биометрия недоступна на этом устройстве'),
+                child: Text(l10n.biometricUnavailableMsg),
               ),
             ],
           ),
@@ -102,8 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Text(
                   value
-                      ? 'Биометрия включена. Теперь вы можете использовать её для входа'
-                      : 'Биометрия отключена',
+                      ? l10n.biometricEnabled
+                      : l10n.biometricDisabled,
                 ),
               ),
             ],
@@ -145,7 +149,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _resetPassword() async {
+  Future<void> _changeLanguage(String languageCode) async {
+    await _storageService.setLanguage(languageCode);
+
+    // Use global app key to change locale immediately
+    final appState = context.findAncestorStateOfType<CashGuardAppState>();
+    appState?.setLocale(Locale(languageCode));
+
+    setState(() {
+      _language = languageCode;
+    });
+  }
+
+  Future<void> _resetPassword(AppLocalizations l10n) async {
     final shouldReset = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -158,26 +174,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Icon(Icons.warning_rounded, color: AppColors.accentOrange),
             const SizedBox(width: 12),
             Text(
-              'Сбросить пароль?',
+              l10n.resetPasswordTitle,
               style: TextStyle(color: AppColors.textPrimary),
             ),
           ],
         ),
         content: Text(
-          'Это удалит ваш текущий пароль и все финансовые данные. Вы уверены?',
+          l10n.resetPasswordMessage,
           style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Отмена', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(l10n.cancel, style: TextStyle(color: AppColors.textSecondary)),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.accentRed,
             ),
-            child: const Text('Сбросить'),
+            child: Text(l10n.reset),
           ),
         ],
       ),
@@ -194,7 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _openBackup() async {
+  Future<void> _openBackup(AppLocalizations l10n) async {
     final enteredPassword = await showDialog<String>(
       context: context,
       builder: (context) => const _PasswordPromptDialog(),
@@ -208,8 +224,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Неверный пароль'),
+          SnackBar(
+            content: Text(l10n.wrongPassword),
             backgroundColor: AppColors.accentRed,
           ),
         );
@@ -220,6 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeColors = AnimatedThemeColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return const Scaffold(
@@ -236,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         title: Text(
-          'Настройки',
+          l10n.settings,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -251,9 +268,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.security_rounded,
-            title: 'Безопасность',
+            title: l10n.security,
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
@@ -267,9 +284,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SwitchListTile(
                   value: _biometricEnabled,
-                  onChanged: _biometricAvailable ? _toggleBiometric : null,
+                  onChanged: _biometricAvailable ? (value) => _toggleBiometric(value, l10n) : null,
                   title: Text(
-                    'Вход по биометрии',
+                    l10n.biometricLogin,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -278,10 +295,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   subtitle: Text(
                     !_biometricAvailable
-                        ? 'Биометрия недоступна на устройстве'
+                        ? l10n.biometricUnavailable
                         : !_hasEnrolledBiometrics
-                        ? 'Биометрия не зарегистрирована'
-                        : 'Используйте отпечаток или Face ID для входа',
+                        ? l10n.biometricNotEnrolled
+                        : l10n.biometricSubtitle,
                     style: TextStyle(
                       fontSize: 13,
                       color: themeColors.textSecondary,
@@ -305,9 +322,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.palette_rounded,
-            title: 'Внешний вид',
+            title: l10n.appearance,
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
@@ -321,7 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _ThemeTile(
                   icon: Icons.light_mode_rounded,
-                  title: 'Светлая тема',
+                  title: l10n.lightTheme,
                   isSelected: _themeMode == 'light',
                   onTap: () => _changeTheme('light'),
                   themeColors: themeColors,
@@ -329,7 +346,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Divider(height: 1, color: themeColors.border),
                 _ThemeTile(
                   icon: Icons.dark_mode_rounded,
-                  title: 'Темная тема',
+                  title: l10n.darkTheme,
                   isSelected: _themeMode == 'dark',
                   onTap: () => _changeTheme('dark'),
                   themeColors: themeColors,
@@ -337,7 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Divider(height: 1, color: themeColors.border),
                 _ThemeTile(
                   icon: Icons.brightness_auto_rounded,
-                  title: 'Системная тема',
+                  title: l10n.systemTheme,
                   isSelected: _themeMode == 'system',
                   onTap: () => _changeTheme('system'),
                   themeColors: themeColors,
@@ -346,9 +363,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionHeader(
+          _SectionHeader(
+            icon: Icons.language_rounded,
+            title: l10n.language,
+            color: AppColors.primary,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: themeColors.cardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: themeColors.border),
+            ),
+            child: Column(
+              children: [
+                _LanguageTile(
+                  flag: '🇺🇸',
+                  title: 'English',
+                  isSelected: _language == 'en',
+                  onTap: () => _changeLanguage('en'),
+                  themeColors: themeColors,
+                ),
+                Divider(height: 1, color: themeColors.border),
+                _LanguageTile(
+                  flag: '🇷🇺',
+                  title: 'Русский',
+                  isSelected: _language == 'ru',
+                  onTap: () => _changeLanguage('ru'),
+                  themeColors: themeColors,
+                ),
+                Divider(height: 1, color: themeColors.border),
+                _LanguageTile(
+                  flag: '🇹🇯',
+                  title: 'Тоҷикӣ',
+                  isSelected: _language == 'tg',
+                  onTap: () => _changeLanguage('tg'),
+                  themeColors: themeColors,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _SectionHeader(
             icon: Icons.storage_rounded,
-            title: 'Данные',
+            title: l10n.data,
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
@@ -374,7 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   title: Text(
-                    'Backup & Restore',
+                    l10n.backupRestore,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -382,7 +440,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   subtitle: Text(
-                    'Резервное копирование',
+                    l10n.backupSubtitle,
                     style: TextStyle(
                       fontSize: 13,
                       color: themeColors.textSecondary,
@@ -393,15 +451,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     size: 16,
                     color: themeColors.textMuted,
                   ),
-                  onTap: _openBackup,
+                  onTap: () => _openBackup(l10n),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.warning_rounded,
-            title: 'Опасная зона',
+            title: l10n.dangerZone,
             color: AppColors.accentRed,
           ),
           const SizedBox(height: 12),
@@ -424,16 +482,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   size: 24,
                 ),
               ),
-              title: const Text(
-                'Сбросить все данные',
-                style: TextStyle(
+              title: Text(
+                l10n.resetAllData,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accentRed,
                 ),
               ),
               subtitle: Text(
-                'Удалить пароль и все данные',
+                l10n.resetSubtitle,
                 style: TextStyle(
                   fontSize: 13,
                   color: themeColors.textSecondary,
@@ -444,7 +502,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 size: 16,
                 color: AppColors.accentRed.withAlpha(128),
               ),
-              onTap: _resetPassword,
+              onTap: () => _resetPassword(l10n),
             ),
           ),
           const SizedBox(height: 24),
@@ -467,7 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Версия 3.0.0',
+                  'Версия 3.0.0', // todo: localization
                   style: TextStyle(
                     fontSize: 13,
                     color: themeColors.textSecondary,
@@ -475,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Защита ваших финансов',
+                  l10n.protectingFinances,
                   style: TextStyle(
                     fontSize: 12,
                     color: themeColors.textMuted,
@@ -573,6 +631,57 @@ class _ThemeTile extends StatelessWidget {
   }
 }
 
+class _LanguageTile extends StatelessWidget {
+  final String flag;
+  final String title;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final AnimatedThemeColorsData themeColors;
+
+  const _LanguageTile({
+    required this.flag,
+    required this.title,
+    required this.isSelected,
+    required this.onTap,
+    required this.themeColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withAlpha(25)
+              : themeColors.textMuted.withAlpha(25),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          flag,
+          style: const TextStyle(fontSize: 20),
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected ? AppColors.primary : themeColors.textPrimary,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(
+        Icons.check_circle_rounded,
+        color: AppColors.primary,
+        size: 24,
+      )
+          : null,
+      onTap: onTap,
+    );
+  }
+}
+
 class _PasswordPromptDialog extends StatefulWidget {
   const _PasswordPromptDialog();
 
@@ -587,18 +696,19 @@ class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
   @override
   Widget build(BuildContext context) {
     final themeColors = AnimatedThemeColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: themeColors.cardBackground,
-      title: Text('Введите пароль', style: TextStyle(color: themeColors.textPrimary)),
+      title: Text(l10n.enterPassword, style: TextStyle(color: themeColors.textPrimary)),
       content: TextField(
         controller: _passwordController,
         obscureText: !_isPasswordVisible,
         autofocus: true,
         style: TextStyle(color: themeColors.textPrimary),
         decoration: InputDecoration(
-          labelText: 'Пароль',
+          labelText: l10n.password,
           labelStyle: TextStyle(color: themeColors.textSecondary),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -624,14 +734,14 @@ class _PasswordPromptDialogState extends State<_PasswordPromptDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: themeColors.textSecondary)),
+          child: Text(l10n.cancel, style: TextStyle(color: themeColors.textSecondary)),
         ),
         FilledButton(
           onPressed: () {
             Navigator.of(context).pop(_passwordController.text);
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-          child: const Text('Подтвердить'),
+          child: Text(l10n.confirm),
         ),
       ],
     );

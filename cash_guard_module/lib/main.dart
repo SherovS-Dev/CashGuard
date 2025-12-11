@@ -1,9 +1,11 @@
 import 'package:cash_guard/screens/lock_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'services/screen_security_service.dart';
 import 'services/secure_storage_service.dart';
 import 'constants/app_theme.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,17 +19,26 @@ void main() async {
   // Включение защиты от скриншотов и записи экрана
   await ScreenSecurityService.enableScreenSecurity();
 
-  // Load saved theme mode
+  // Load saved theme mode and language
   final storageService = SecureStorageService();
   final savedThemeMode = await storageService.getThemeMode();
+  final savedLanguage = await storageService.getLanguage();
 
-  runApp(CashGuardApp(initialThemeMode: savedThemeMode));
+  runApp(CashGuardApp(
+    initialThemeMode: savedThemeMode,
+    initialLanguage: savedLanguage,
+  ));
 }
 
 class CashGuardApp extends StatefulWidget {
   final String initialThemeMode;
+  final String initialLanguage;
 
-  const CashGuardApp({super.key, required this.initialThemeMode});
+  const CashGuardApp({
+    super.key,
+    required this.initialThemeMode,
+    required this.initialLanguage,
+  });
 
   // Global key for accessing app state from anywhere
   static final GlobalKey<CashGuardAppState> appKey = GlobalKey<CashGuardAppState>();
@@ -38,11 +49,13 @@ class CashGuardApp extends StatefulWidget {
 
 class CashGuardAppState extends State<CashGuardApp> {
   late ThemeMode _themeMode;
+  late Locale _locale;
 
   @override
   void initState() {
     super.initState();
     _themeMode = _parseThemeMode(widget.initialThemeMode);
+    _locale = Locale(widget.initialLanguage);
   }
 
   ThemeMode _parseThemeMode(String mode) {
@@ -63,6 +76,12 @@ class CashGuardAppState extends State<CashGuardApp> {
 
     // Update system UI based on theme
     _updateSystemUI(mode);
+  }
+
+  void setLocale(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
   }
 
   void _updateSystemUI(ThemeMode mode) {
@@ -94,6 +113,17 @@ class CashGuardAppState extends State<CashGuardApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
+      // Localization
+      locale: _locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        TajikMaterialLocalizations.delegate,
+        TajikCupertinoLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       // Smooth theme transition animation
       themeAnimationDuration: const Duration(milliseconds: 400),
       themeAnimationCurve: Curves.easeInOut,
